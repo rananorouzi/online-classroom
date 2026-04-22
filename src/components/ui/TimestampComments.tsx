@@ -25,10 +25,6 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function normalizeCreatedAt(value: string | Date): string {
-  return typeof value === "string" ? value : value.toISOString();
-}
-
 export default function TimestampComments({
   sessionId,
   currentTime,
@@ -52,7 +48,10 @@ export default function TimestampComments({
         setComments(
           data.map((c: { id: string; text: string; timestamp: number; createdAt: string | Date; user: { id: string; name: string | null; role: string } }) => ({
             ...c,
-            createdAt: normalizeCreatedAt(c.createdAt),
+            createdAt:
+              typeof c.createdAt === "string"
+                ? c.createdAt
+                : c.createdAt.toISOString(),
           }))
         );
       } catch {
@@ -70,10 +69,9 @@ export default function TimestampComments({
         const { addComment } = await import("@/app/actions/comments");
         const comment = await addComment(sessionId, newText, currentTime);
         setComments((prev) =>
-          [
-            ...prev,
-            { ...comment, createdAt: normalizeCreatedAt(comment.createdAt) },
-          ].sort((a, b) => a.timestamp - b.timestamp)
+          [...prev, { ...comment, createdAt: comment.createdAt.toISOString() }].sort(
+            (a, b) => a.timestamp - b.timestamp
+          )
         );
         setNewText("");
       } catch (err) {
