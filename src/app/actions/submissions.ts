@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -17,81 +18,16 @@ export async function submitWork(
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
-  const item = await prisma.checklistItem.findUnique({
-    where: { id: checklistItemId },
-    select: {
-      id: true,
-      session: {
-        select: {
-          releaseAt: true,
-          week: {
-            select: {
-              releaseAt: true,
-              courseId: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!item) {
-    throw new Error("Checklist item not found");
-  }
-
-  const userRole = (session.user as { role?: string }).role;
-  const isTeacher = userRole === "TEACHER" || userRole === "ADMIN";
-
-  if (!isTeacher) {
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: session.user.id,
-          courseId: item.session.week.courseId,
-        },
-      },
-      select: { id: true },
-    });
-
-    if (!enrollment) {
-      throw new Error("Unauthorized");
-    }
-
-    const now = new Date();
-    if (item.session.week.releaseAt > now || item.session.releaseAt > now) {
-      throw new Error("This content is not yet available");
-    }
-  }
-
-  const existingSubmission = await prisma.submission.findFirst({
-    where: {
+  const submission = await prisma.submission.create({
+    data: {
       checklistItemId,
       studentId: session.user.id,
+      status: SubmissionStatus.PENDING,
+      fileKey,
+      fileName,
+      fileType,
     },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
   });
-
-  const submission = existingSubmission
-    ? await prisma.submission.update({
-        where: { id: existingSubmission.id },
-        data: {
-          status: "PENDING",
-          fileKey,
-          fileName,
-          fileType,
-        },
-      })
-    : await prisma.submission.create({
-        data: {
-          checklistItemId,
-          studentId: session.user.id,
-          status: "PENDING",
-          fileKey,
-          fileName,
-          fileType,
-        },
-      });
 
   revalidatePath("/dashboard");
   return submission;
@@ -131,7 +67,7 @@ export async function approveSubmission(submissionId: string) {
 
   const submission = await prisma.submission.update({
     where: { id: submissionId },
-    data: { status: "COMPLETED" },
+    data: { status: SubmissionStatus.COMPLETED },
   });
 
   revalidatePath("/dashboard");
@@ -156,7 +92,7 @@ export async function requestRevision(
   const [submission] = await prisma.$transaction([
     prisma.submission.update({
       where: { id: submissionId },
-      data: { status: "REVISION" },
+      data: { status: SubmissionStatus.REVISION },
     }),
     prisma.feedback.create({
       data: {
@@ -191,7 +127,7 @@ export async function approveWithFeedback(
   const [submission] = await prisma.$transaction([
     prisma.submission.update({
       where: { id: submissionId },
-      data: { status: "COMPLETED" },
+      data: { status: SubmissionStatus.COMPLETED },
     }),
     prisma.feedback.create({
       data: {
