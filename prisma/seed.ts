@@ -5,7 +5,6 @@ import path from "path";
 
 const dbPath = path.resolve(__dirname, "dev.db");
 const adapter = new PrismaBetterSqlite3({ url: dbPath });
-
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

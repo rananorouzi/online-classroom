@@ -6,7 +6,6 @@ CREATE TABLE "users" (
     "hashedPassword" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'STUDENT',
     "avatarUrl" TEXT,
-    "isArchived" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -64,7 +63,6 @@ CREATE TABLE "sessions" (
     "description" TEXT,
     "order" INTEGER NOT NULL,
     "videoKey" TEXT,
-    "attachmentKey" TEXT,
     "releaseAt" DATETIME NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -113,18 +111,6 @@ CREATE TABLE "feedbacks" (
 );
 
 -- CreateTable
-CREATE TABLE "comments" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "sessionId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-    "timestamp" REAL NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "comments_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "sessions" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "comments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "enrollments" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
@@ -156,9 +142,6 @@ CREATE INDEX "password_resets_token_idx" ON "password_resets"("token");
 CREATE UNIQUE INDEX "weeks_courseId_number_key" ON "weeks"("courseId", "number");
 
 -- CreateIndex
-CREATE INDEX "weeks_releaseAt_idx" ON "weeks"("releaseAt");
-
--- CreateIndex
 CREATE INDEX "sessions_weekId_idx" ON "sessions"("weekId");
 
 -- CreateIndex
@@ -172,18 +155,6 @@ CREATE UNIQUE INDEX "submissions_checklistItemId_studentId_key" ON "submissions"
 
 -- CreateIndex
 CREATE INDEX "feedbacks_submissionId_idx" ON "feedbacks"("submissionId");
-
--- CreateIndex
-CREATE INDEX "feedbacks_teacherId_idx" ON "feedbacks"("teacherId");
-
--- CreateIndex
-CREATE INDEX "comments_sessionId_idx" ON "comments"("sessionId");
-
--- CreateIndex
-CREATE INDEX "comments_userId_idx" ON "comments"("userId");
-
--- CreateIndex
-CREATE INDEX "enrollments_courseId_idx" ON "enrollments"("courseId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "enrollments_userId_courseId_key" ON "enrollments"("userId", "courseId");
