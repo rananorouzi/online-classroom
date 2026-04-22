@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum SubmissionStatus {
+  IDLE
+  PENDING
+  REVISION
+  COMPLETED
+}
+
+// ─── User ────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  hashedPassword String
+  role           Role     @default(STUDENT)
+  avatarUrl      String?
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  enrollments    Enrollment[]
+  submissions    Submission[]
+  feedbacks      Feedback[]
+  comments       Comment[]
+  activeSessions ActiveSession[]
+  passwordResets PasswordReset[]
+
+  @@map("users")
+}
+
+// ─── Active Session (Anti-Account Sharing) ───────────────
+
+model ActiveSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress   String
+  userAgent   String
+  deviceHash  String
+  sessionToken String  @unique
+  lastActive  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, deviceHash])
+  @@index([userId])
+  @@map("active_sessions")
+}
+
+// ─── Password Reset ──────────────────────────────────────
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@map("password_resets")
+}
+
+// ─── Course ──────────────────────────────────────────────
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  coverImage  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  weeks       Week[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+// ─── Week (Drip Content) ─────────────────────────────────
+
+model Week {
+  id        String   @id @default(cuid())
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  number    Int
+  title     String
+  releaseAt DateTime
+  createdAt DateTime @default(now())
+
+  sessions  Session[]
+
+  @@unique([courseId, number])
+  @@index([courseId])
+  @@index([releaseAt])
+  @@map("weeks")
+}
+
+// ─── Session (Lesson) ────────────────────────────────────
+
+model Session {
+  id          String   @id @default(cuid())
+  weekId      String
+  week        Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  videoKey    String?
+  attachmentKey String?
+  releaseAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  checklistItems ChecklistItem[]
+  comments       Comment[]
+
+  @@index([weekId])
+  @@map("sessions")
+}
+
+// ─── Checklist Item ──────────────────────────────────────
+
+model ChecklistItem {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+
+  @@index([sessionId])
+  @@map("checklist_items")
+}
+
+// ─── Submission ──────────────────────────────────────────
+
+model Submission {
+  id              String           @id @default(cuid())
+  checklistItemId String
+  checklistItem   ChecklistItem    @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status          SubmissionStatus @default(IDLE)
+  fileKey         String?
+  fileName        String?
+  fileType        String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  feedbacks       Feedback[]
+
+  @@index([checklistItemId, studentId])
+  @@index([studentId])
+  @@map("submissions")
+}
+
+// ─── Feedback (Audio waveform) ───────────────────────────
+
+model Feedback {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  audioKey     String?
+  waveformJson Json?
+  comment      String?
+  approved     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([submissionId])
+  @@index([teacherId])
+  @@map("feedbacks")
+}
+
+// ─── Comment (Timestamped video comments) ────────────────
+
+model Comment {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  timestamp Float    // seconds into the video
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ─── Enrollment ──────────────────────────────────────────
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("enrollments")
+}
