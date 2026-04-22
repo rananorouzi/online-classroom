@@ -2,14 +2,43 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JsonValue }
+  | JsonValue[];
+
+function isPrismaErrorWithAttachmentKey(
+  error: unknown,
+  code: string
+): error is { code: string; message: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    "message" in error &&
+    typeof error.code === "string" &&
+    typeof error.message === "string" &&
+    error.code === code &&
+    error.message.includes("attachmentKey")
+  );
+}
+
+function isPrismaValidationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    typeof error.name === "string" &&
+    error.name === "PrismaClientValidationError"
+  );
+}
 
 function isMissingAttachmentColumnError(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2022" &&
-    String(error.message).includes("attachmentKey")
-  );
+  return isPrismaErrorWithAttachmentKey(error, "P2022");
 }
 
 /**
@@ -63,10 +92,7 @@ export async function getCourseWeeks(courseId: string) {
     });
   } catch (error) {
     // Handles stale generated Prisma client during local dev after schema changes.
-    if (
-      !(error instanceof Prisma.PrismaClientValidationError) &&
-      !isMissingAttachmentColumnError(error)
-    ) {
+    if (!isPrismaValidationError(error) && !isMissingAttachmentColumnError(error)) {
       throw error;
     }
 
@@ -92,9 +118,12 @@ export async function getCourseWeeks(courseId: string) {
       },
     });
 
-    weeks = legacyWeeks.map((week) => ({
+    weeks = legacyWeeks.map((week: typeof legacyWeeks[number]) => ({
       ...week,
-      sessions: week.sessions.map((s) => ({ ...s, attachmentKey: null })),
+      sessions: week.sessions.map((s: typeof week.sessions[number]) => ({
+        ...s,
+        attachmentKey: null,
+      })),
     }));
   }
 
@@ -145,7 +174,7 @@ export async function getSession(sessionId: string) {
               id: string;
               comment: string | null;
               audioKey: string | null;
-              waveformJson: Prisma.JsonValue | null;
+              waveformJson: JsonValue | null;
               createdAt: Date;
             }>;
           }>;
