@@ -57,16 +57,6 @@ export async function enforceSessionLimit(
 }
 
 /**
- * Touch a session to keep it active while requests continue.
- */
-export async function touchSession(sessionToken: string): Promise<void> {
-  await prisma.activeSession.updateMany({
-    where: { sessionToken },
-    data: { lastActive: new Date() },
-  });
-}
-
-/**
  * Remove a session on logout.
  */
 export async function removeSession(sessionToken: string): Promise<void> {
