@@ -41,7 +41,7 @@ export default async function StudentCoursesPage({ params }: Props) {
     <main className="px-6 py-12">
       <div className="mb-8">
         <Link
-          href="/dashboard"
+          href="/dashboard/students"
           className="text-xs text-gold/70 hover:text-gold transition"
         >
           ← Back to Students
@@ -65,23 +65,23 @@ export default async function StudentCoursesPage({ params }: Props) {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {student.enrollments.map(({ course }) => (
+          {student.enrollments.map((enrollment: { course: { id: string; title: string; description: string | null; weeks: { title: string }[] } }) => (
             <Link
-              key={course.id}
-              href={`/dashboard/course/${course.id}`}
+              key={enrollment.course.id}
+              href={`/dashboard/course/${enrollment.course.id}`}
               className="group rounded-xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-gold/30 hover:bg-zinc-950/80"
             >
               <h2 className="text-lg font-semibold text-primary group-hover:text-gold transition">
-                {course.title}
+                {enrollment.course.title}
               </h2>
-              {course.description && (
+              {enrollment.course.description && (
                 <p className="mt-2 text-sm text-zinc-500 line-clamp-2">
-                  {course.description}
+                  {enrollment.course.description}
                 </p>
               )}
               <p className="mt-4 text-xs text-zinc-600">
-                {course.weeks.length > 0
-                  ? `Latest: ${course.weeks[0].title}`
+                {enrollment.course.weeks.length > 0
+                  ? `Latest: ${enrollment.course.weeks[0].title}`
                   : "Coming soon"}
               </p>
             </Link>
