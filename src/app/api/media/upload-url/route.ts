@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const role = (session.user as { role?: string }).role;
+  if (role !== "TEACHER" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { contentType, folder } = await req.json();
 
   if (!contentType || typeof contentType !== "string") {
@@ -38,9 +43,17 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = contentType.split("/")[1];
-  const safeFolder =
-    typeof folder === "string" ? folder.replace(/[^a-zA-Z0-9-_/]/g, "") : "uploads";
-  const key = `${safeFolder}/${randomUUID()}.${ext}`;
+  const requestedFolder = typeof folder === "string" ? folder.trim() : "feedback";
+  const folderPattern = /^feedback(?:\/[a-zA-Z0-9_-]+)*$/;
+
+  if (!folderPattern.test(requestedFolder)) {
+    return NextResponse.json(
+      { error: "Invalid folder. Only feedback/* paths are allowed." },
+      { status: 400 }
+    );
+  }
+
+  const key = `${requestedFolder}/${randomUUID()}.${ext}`;
 
   try {
     const url = await getSignedUploadUrl(key, contentType);

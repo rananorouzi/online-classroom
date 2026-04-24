@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { canAccessMediaKey, isValidMediaKey } from "@/lib/media-access";
 import { getSignedReadUrl } from "@/lib/s3";
 
 /**
@@ -22,9 +23,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Validate the key doesn't contain path traversal
-  if (key.includes("..") || key.startsWith("/")) {
+  if (!isValidMediaKey(key)) {
     return NextResponse.json({ error: "Invalid key" }, { status: 400 });
+  }
+
+  const role = (session.user as { role?: string }).role;
+  const hasAccess = await canAccessMediaKey(session.user.id, role, key);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Local dev fallback: serve sample media when S3 is not configured

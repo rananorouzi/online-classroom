@@ -49,6 +49,25 @@ export async function getCourseWeeks(courseId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
+  const userRole = (session.user as { role?: string }).role;
+  const isTeacher = userRole === "TEACHER" || userRole === "ADMIN";
+
+  if (!isTeacher) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId: session.user.id,
+          courseId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
+      throw new Error("Unauthorized");
+    }
+  }
+
   const now = new Date();
 
   let weeks: Array<{
@@ -260,6 +279,28 @@ export async function getSession(sessionId: string) {
   }
 
   if (!session) throw new Error("Session not found");
+
+  if (!isTeacher) {
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId: userSession.user.id,
+        course: {
+          weeks: {
+            some: {
+              sessions: {
+                some: { id: sessionId },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
+      throw new Error("Unauthorized");
+    }
+  }
 
   // Drip content enforcement
   if (session.releaseAt > new Date()) {
