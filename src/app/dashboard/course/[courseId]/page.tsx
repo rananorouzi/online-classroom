@@ -15,8 +15,14 @@ export default async function CoursePage({ params }: Props) {
   let weeks: Awaited<ReturnType<typeof getCourseWeeks>>;
   try {
     weeks = await getCourseWeeks(courseId);
-  } catch {
-    redirect("/dashboard");
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" || error.message === "Session not found")
+    ) {
+      redirect("/dashboard");
+    }
+    throw error;
   }
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
 

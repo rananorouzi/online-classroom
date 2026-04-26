@@ -14,8 +14,13 @@ export default function DashboardQuickActions() {
   }
 
   async function handleLogout() {
-    setIsLogoutPending(true);
-    await signOut({ callbackUrl: "/auth/login" });
+    try {
+      setIsLogoutPending(true);
+      await signOut({ callbackUrl: "/auth/login" });
+    } catch (error) {
+      console.error("Failed to sign out", error);
+      setIsLogoutPending(false);
+    }
   }
 
   return (

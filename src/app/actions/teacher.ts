@@ -190,13 +190,24 @@ export async function updateWeek(
   });
   if (!week) throw new Error("Week not found");
 
-  await prisma.week.update({
-    where: { id: weekId },
+  const updateResult = await prisma.week.updateMany({
+    where: {
+      id: weekId,
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
     data: {
       title: title.trim(),
       ...(releaseAt ? { releaseAt: new Date(releaseAt) } : {}),
     },
   });
+
+  if (updateResult.count === 0) {
+    throw new Error("Week not found");
+  }
 
   revalidatePath(`/dashboard/course/${week.courseId}`);
   return week;
@@ -593,7 +604,10 @@ export async function deleteCourse(courseId: string) {
   await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   const enrollmentCount = await prisma.enrollment.count({
-    where: { courseId },
+    where: {
+      courseId,
+      NOT: { userId: teacherId },
+    },
   });
 
   if (enrollmentCount > 0) {

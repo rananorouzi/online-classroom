@@ -67,35 +67,29 @@ export default async function StudentCoursesPage({ params }: Props) {
         </div>
       </div>
 
-      {student.enrollments.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-12 text-center">
-          <p className="text-zinc-400">This student is not enrolled in any courses.</p>
-        </div>
-      ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {student.enrollments.map((enrollment: { course: { id: string; title: string; description: string | null; weeks: { title: string }[] } }) => (
-            <Link
-              key={enrollment.course.id}
-              href={`/dashboard/course/${enrollment.course.id}`}
-              className="group rounded-xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-gold/30 hover:bg-zinc-950/80"
-            >
-              <h2 className="text-lg font-semibold text-primary group-hover:text-gold transition">
-                {enrollment.course.title}
-              </h2>
-              {enrollment.course.description && (
-                <p className="mt-2 text-sm text-zinc-500 line-clamp-2">
-                  {enrollment.course.description}
-                </p>
-              )}
-              <p className="mt-4 text-xs text-zinc-600">
-                {enrollment.course.weeks.length > 0
-                  ? `Latest: ${enrollment.course.weeks[0].title}`
-                  : "Coming soon"}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {student.enrollments.map((enrollment: { course: { id: string; title: string; description: string | null; weeks: { title: string }[] } }) => (
+          <Link
+            key={enrollment.course.id}
+            href={`/dashboard/course/${enrollment.course.id}`}
+            className="group rounded-xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-gold/30 hover:bg-zinc-950/80"
+          >
+            <h2 className="text-lg font-semibold text-primary group-hover:text-gold transition">
+              {enrollment.course.title}
+            </h2>
+            {enrollment.course.description && (
+              <p className="mt-2 text-sm text-zinc-500 line-clamp-2">
+                {enrollment.course.description}
               </p>
-            </Link>
-          ))}
-        </div>
-      )}
+            )}
+            <p className="mt-4 text-xs text-zinc-600">
+              {enrollment.course.weeks.length > 0
+                ? `Latest: ${enrollment.course.weeks[0].title}`
+                : "Coming soon"}
+            </p>
+          </Link>
+        ))}
+      </div>
     </main>
   );
 }
