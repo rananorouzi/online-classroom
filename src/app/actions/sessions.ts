@@ -80,6 +80,7 @@ export async function getSession(sessionId: string) {
   const userRole = (userSession.user as { role?: string }).role;
   const isTeacher = userRole === "TEACHER";
   const isAdmin = userRole === "ADMIN";
+  const isStaff = isTeacher || isAdmin;
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -95,7 +96,7 @@ export async function getSession(sessionId: string) {
         orderBy: { order: "asc" },
         include: {
           submissions: {
-            where: isTeacher ? {} : { studentId: userSession.user.id },
+            where: isStaff ? {} : { studentId: userSession.user.id },
             include: {
               student: { select: { id: true, name: true, email: true } },
               feedbacks: {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import TeacherManager from "./TeacherManager";
 
 export default async function ManagerPage() {
@@ -19,46 +20,45 @@ export default async function ManagerPage() {
       email: true,
       isArchived: true,
       createdAt: true,
-      enrollments: {
+      _count: {
         select: {
-          course: {
-            select: {
-              enrollments: {
-                where: {
-                  user: {
-                    role: "STUDENT",
-                    isArchived: false,
-                  },
-                },
-                select: {
-                  userId: true,
-                },
-              },
-            },
-          },
+          enrollments: true,
         },
       },
     },
     orderBy: [{ isArchived: "asc" }, { name: "asc" }],
   });
 
+  const teacherIds = teachersWithCourses.map((teacher) => teacher.id);
+  const studentCounts = teacherIds.length
+    ? await prisma.$queryRaw<Array<{ teacherId: string; studentsCount: number }>>(Prisma.sql`
+        SELECT
+          teacher_enrollments.userId AS teacherId,
+          COUNT(DISTINCT student_enrollments.userId) AS studentsCount
+        FROM enrollments AS teacher_enrollments
+        INNER JOIN enrollments AS student_enrollments
+          ON teacher_enrollments.courseId = student_enrollments.courseId
+        INNER JOIN users AS students
+          ON students.id = student_enrollments.userId
+        WHERE teacher_enrollments.userId IN (${Prisma.join(teacherIds)})
+          AND students.role = 'STUDENT'
+          AND students.isArchived = false
+        GROUP BY teacher_enrollments.userId
+      `)
+    : [];
+  const studentCountByTeacherId = new Map(
+    studentCounts.map((row) => [row.teacherId, Number(row.studentsCount)])
+  );
+
   const teachers = teachersWithCourses.map((teacher) => {
-    const studentIds = new Set<string>();
-
-    for (const enrollment of teacher.enrollments) {
-      for (const studentEnrollment of enrollment.course.enrollments) {
-        studentIds.add(studentEnrollment.userId);
-      }
-    }
-
     return {
       id: teacher.id,
       name: teacher.name,
       email: teacher.email,
       isArchived: teacher.isArchived,
       createdAt: teacher.createdAt,
-      coursesCount: teacher.enrollments.length,
-      studentsCount: studentIds.size,
+      coursesCount: teacher._count.enrollments,
+      studentsCount: studentCountByTeacherId.get(teacher.id) ?? 0,
     };
   });
 

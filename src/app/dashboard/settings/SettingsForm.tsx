@@ -15,7 +15,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isLogoutPending, startLogoutTransition] = useTransition();
+  const [isLogoutPending, setIsLogoutPending] = useState(false);
 
   const handleUpdateProfile = () => {
     setMessage(null);
@@ -47,10 +47,9 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     });
   };
 
-  const handleLogout = () => {
-    startLogoutTransition(async () => {
-      await signOut({ callbackUrl: "/auth/login" });
-    });
+  const handleLogout = async () => {
+    setIsLogoutPending(true);
+    await signOut({ callbackUrl: "/auth/login" });
   };
 
   return (

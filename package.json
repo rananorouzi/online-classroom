@@ -10,7 +10,7 @@
     "lint": "eslint"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

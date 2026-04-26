@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useTransition } from "react";
+import { useState } from "react";
 
 export default function DashboardQuickActions() {
-  const [isLogoutPending, startLogoutTransition] = useTransition();
+  const pathname = usePathname();
+  const [isLogoutPending, setIsLogoutPending] = useState(false);
 
-  function handleLogout() {
-    startLogoutTransition(async () => {
-      await signOut({ callbackUrl: "/auth/login" });
-    });
+  if (pathname.startsWith("/dashboard/course/")) {
+    return null;
+  }
+
+  async function handleLogout() {
+    setIsLogoutPending(true);
+    await signOut({ callbackUrl: "/auth/login" });
   }
 
   return (
