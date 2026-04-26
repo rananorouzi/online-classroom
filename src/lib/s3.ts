@@ -1,49 +1,39 @@
-import {
-  S3Client,
-  GetObjectCommand,
-  PutObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
-export const s3 = new S3Client({
-  region: process.env.AWS_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
-
-const BUCKET = process.env.AWS_S3_BUCKET!;
-const SIGNED_URL_EXPIRY = 3600; // 60 minutes
+import { del, head } from "@vercel/blob";
 
 /**
- * Generate a signed GET URL for streaming/downloading a protected media file.
+ * Resolve a media key to a downloadable Blob URL.
  */
 export async function getSignedReadUrl(key: string): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
-  return getSignedUrl(s3, command, { expiresIn: SIGNED_URL_EXPIRY });
+  if (key.startsWith("http://") || key.startsWith("https://")) {
+    return key;
+  }
+
+  const meta = await head(key);
+  return meta.url;
 }
 
 /**
- * Generate a signed PUT URL for direct browser uploads to S3.
+ * Direct signed upload URLs are not used in Blob mode.
+ * Client upload falls back to /api/upload/local, which proxies to Blob in production.
  */
 export async function getSignedUploadUrl(
-  key: string,
-  contentType: string
+  _key: string,
+  _contentType: string
 ): Promise<string> {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-    ContentType: contentType,
-  });
-  return getSignedUrl(s3, command, { expiresIn: SIGNED_URL_EXPIRY });
+  void _key;
+  void _contentType;
+
+  const error = new Error(
+    "Direct signed uploads are disabled in Blob mode. Use /api/upload/local proxy upload."
+  ) as Error & { code?: string };
+  error.code = "BLOB_DIRECT_UPLOAD_DISABLED";
+  throw error;
 }
 
 /**
  * Delete an object by key.
  */
 export async function deleteObjectByKey(key: string): Promise<void> {
-  const command = new DeleteObjectCommand({ Bucket: BUCKET, Key: key });
-  await s3.send(command);
+  if (!key) return;
+  await del(key);
 }

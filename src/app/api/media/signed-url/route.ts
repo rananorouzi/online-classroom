@@ -4,8 +4,8 @@ import { canAccessMediaKey, isValidMediaKey } from "@/lib/media-access";
 import { getSignedReadUrl } from "@/lib/s3";
 
 /**
- * Media proxy: generates signed URLs for HLS playlists, chunks, and audio.
- * Prevents direct S3 link sharing.
+ * Media proxy: resolves secure URLs for HLS playlists, chunks, and audio.
+ * Prevents direct object-store link sharing.
  *
  * GET /api/media/signed-url?key=courses/week1/video.m3u8
  */
@@ -33,30 +33,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Local dev fallback: serve sample media when S3 is not configured
-  const isLocalDev =
-    !process.env.AWS_ACCESS_KEY_ID ||
-    process.env.AWS_ACCESS_KEY_ID === "stub-local-dev";
-
-  if (isLocalDev) {
-    const origin = req.nextUrl.origin;
-
-    // Serve actual uploaded files from public/
-    if (key.startsWith("uploads/")) {
-      return NextResponse.json({ url: `${origin}/${key}`, local: true });
-    }
-
-    // Fallback sample media for seed data
-    const isVideo = key.endsWith(".m3u8") || key.endsWith(".mp4");
-    const isAudio =
-      key.endsWith(".webm") || key.endsWith(".opus") || key.endsWith(".ogg");
-
-    if (isVideo || isAudio) {
-      return NextResponse.json({ url: `${origin}/sample-media/sample.mp4`, local: true });
-    }
-    return NextResponse.json({ error: "File not found (local dev)" }, { status: 404 });
-  }
-
   try {
     const signedUrl = await getSignedReadUrl(key);
     return NextResponse.json(
@@ -64,6 +40,18 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "private, max-age=2400" } }
     );
   } catch {
+    const origin = req.nextUrl.origin;
+    if (key.startsWith("uploads/")) {
+      return NextResponse.json({ url: `${origin}/${key}`, local: true });
+    }
+
+    const isVideo = key.endsWith(".m3u8") || key.endsWith(".mp4");
+    const isAudio =
+      key.endsWith(".webm") || key.endsWith(".opus") || key.endsWith(".ogg");
+    if (isVideo || isAudio) {
+      return NextResponse.json({ url: `${origin}/sample-media/sample.mp4`, local: true });
+    }
+
     return NextResponse.json(
       { error: "Failed to generate signed URL" },
       { status: 500 }

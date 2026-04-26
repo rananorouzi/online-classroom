@@ -3,19 +3,13 @@ import { auth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
 
 /**
  * Local file upload for dev environment.
  * POST /api/upload/local — multipart form data with a "file" field.
  */
 export async function POST(req: NextRequest) {
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-    return NextResponse.json(
-      { error: "Local uploads are disabled in production. Use S3 signed uploads." },
-      { status: 400 }
-    );
-  }
-
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,14 +36,35 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split(".").pop() || "bin";
   const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
   const fileName = `${randomUUID()}.${safeExt}`;
+  const fileKey = `uploads/${fileName}`;
+
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    try {
+      const blob = await put(fileKey, file, {
+        access: "public",
+        addRandomSuffix: false,
+      });
+
+      return NextResponse.json({
+        key: fileKey,
+        fileName: file.name,
+        fileType: file.type,
+        url: blob.url,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Blob upload failed. Check BLOB_READ_WRITE_TOKEN." },
+        { status: 500 }
+      );
+    }
+  }
+
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
 
   await mkdir(uploadsDir, { recursive: true });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(uploadsDir, fileName), buffer);
-
-  const fileKey = `uploads/${fileName}`;
 
   return NextResponse.json({
     key: fileKey,

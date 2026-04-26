@@ -9,7 +9,7 @@ This app supports two main roles:
 - `TEACHER`: manage courses, weeks, sessions, checklist tasks, media, student enrollments, and review submissions.
 - `STUDENT`: consume released lessons, submit practice work (file/audio/video), and view teacher feedback.
 
-The platform includes timestamp comments on lessons, secure auth, and media handling through S3 signed URLs for production deployments.
+The platform includes timestamp comments on lessons, secure auth, and media handling through Vercel Blob for production deployments.
 
 ## Tech Stack
 
@@ -20,7 +20,7 @@ The platform includes timestamp comments on lessons, secure auth, and media hand
 - `NextAuth v5 beta` (credentials provider)
 - `video.js` + HLS streaming support
 - `wavesurfer.js` for audio waveform playback
-- `AWS SDK v3` for signed media URLs (S3)
+- `Vercel Blob` for media storage and delivery
 - `Nodemailer` for password reset email flow
 
 ## Project Structure
@@ -72,7 +72,7 @@ The platform includes timestamp comments on lessons, secure auth, and media hand
 	- comment + audio feedback
 - Timestamped lesson comments
 - Account management and password reset
-- S3 signed URL upload/download support (production)
+- Vercel Blob upload/download support (production)
 - Local upload fallback for development only
 
 ## How To Run
@@ -97,10 +97,10 @@ Optional for full features:
 
 - SMTP for password reset emails:
 	- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- AWS S3 for cloud media:
-	- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET`
+- Vercel Blob for cloud media:
+	- `BLOB_READ_WRITE_TOKEN`
 
-In production (including Vercel), S3 variables are required for media uploads.
+In production (including Vercel), Blob token is required for media uploads.
 
 ### 3. Push schema to database
 
@@ -139,15 +139,12 @@ Open `http://localhost:3000`.
 ## Deploy on Vercel
 
 1. Create a PostgreSQL database (Neon/Supabase/Railway or equivalent).
-2. Create an S3 bucket and IAM credentials with read/write/delete access.
+2. Create a Vercel Blob store and get a `BLOB_READ_WRITE_TOKEN`.
 3. Set Vercel environment variables:
 	- `AUTH_SECRET`
 	- `NEXTAUTH_URL` (your Vercel domain)
 	- `DATABASE_URL` (PostgreSQL)
-	- `AWS_REGION`
-	- `AWS_ACCESS_KEY_ID`
-	- `AWS_SECRET_ACCESS_KEY`
-	- `AWS_S3_BUCKET`
+	- `BLOB_READ_WRITE_TOKEN`
 	- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 4. Run `npx prisma db push` against production database.
 5. Run `npx prisma db seed` once for initial manager account.
