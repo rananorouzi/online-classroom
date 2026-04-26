@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback } from "react";
 import dynamic from "next/dynamic";
 import StyledAudioPlayer from "@/components/media/StyledAudioPlayer";
+import { uploadMediaFile } from "@/lib/client-upload";
 
 const AudioRecorder = dynamic(
   () => import("@/components/media/AudioRecorder"),
@@ -89,16 +90,13 @@ function SubmissionReviewCard({ submission }: { submission: Submission }) {
 
           // Upload audio blob if recorded
           if (audioBlob) {
-            const formData = new FormData();
-            formData.append("file", audioBlob, "feedback.webm");
-            const res = await fetch("/api/upload/local", {
-              method: "POST",
-              body: formData,
+            const data = await uploadMediaFile({
+              file: audioBlob,
+              fileName: "feedback.webm",
+              contentType: "audio/webm",
+              folder: `feedback/${submission.id}`,
             });
-            if (res.ok) {
-              const data = await res.json();
-              audioKey = data.key;
-            }
+            audioKey = data.key;
           }
 
           if (approve) {

@@ -9,6 +9,13 @@ import { randomUUID } from "crypto";
  * POST /api/upload/local — multipart form data with a "file" field.
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    return NextResponse.json(
+      { error: "Local uploads are disabled in production. Use S3 signed uploads." },
+      { status: 400 }
+    );
+  }
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
