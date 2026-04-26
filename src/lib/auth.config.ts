@@ -2,7 +2,23 @@ import type { NextAuthConfig } from "next-auth";
 
 // Shared auth config — Edge-compatible (no Node.js modules)
 export const authConfig: NextAuthConfig = {
-  providers: [], // Providers added in full auth.ts
+  providers: [
+    // Credentials provider for username/password login
+    {
+      id: "credentials",
+      name: "Credentials",
+      type: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email", placeholder: "user@example.com" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        // Implement your user lookup and password check here
+        // This is a stub; real logic should be in src/lib/auth.ts
+        return null;
+      },
+    },
+  ],
   session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   pages: {
     signIn: "/auth/login",
