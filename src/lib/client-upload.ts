@@ -27,16 +27,25 @@ function uploadToSignedUrl(
     xhr.open("PUT", signedUrl);
     xhr.setRequestHeader("Content-Type", contentType);
 
+    let fallbackProgress = 1;
+    onProgress?.(fallbackProgress);
+
     if (onProgress) {
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           onProgress(Math.round((event.loaded / event.total) * 100));
+          return;
         }
+
+        // Some browsers/storage providers do not report total bytes.
+        fallbackProgress = Math.min(fallbackProgress + 5, 95);
+        onProgress(fallbackProgress);
       };
     }
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
         resolve();
       } else {
         reject(new Error("Upload failed"));
@@ -60,16 +69,24 @@ async function uploadToLocalRoute(
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload/local");
 
+    let fallbackProgress = 1;
+    onProgress?.(fallbackProgress);
+
     if (onProgress) {
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           onProgress(Math.round((event.loaded / event.total) * 100));
+          return;
         }
+
+        fallbackProgress = Math.min(fallbackProgress + 5, 95);
+        onProgress(fallbackProgress);
       };
     }
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
         const data = JSON.parse(xhr.responseText) as {
           key: string;
           fileName: string;
