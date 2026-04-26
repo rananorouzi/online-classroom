@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "setup": "prisma db push && prisma db seed",
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
