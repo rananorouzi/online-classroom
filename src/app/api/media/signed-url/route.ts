@@ -40,6 +40,14 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "private, max-age=2400" } }
     );
   } catch {
+    const isDevLocalFallback = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
+    if (!isDevLocalFallback) {
+      return NextResponse.json(
+        { error: "Failed to generate signed URL" },
+        { status: 500 }
+      );
+    }
+
     const origin = req.nextUrl.origin;
     if (key.startsWith("uploads/")) {
       return NextResponse.json({ url: `${origin}/${key}`, local: true });

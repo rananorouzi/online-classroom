@@ -34,7 +34,12 @@ export async function POST(req: NextRequest) {
     "image/",
     "application/pdf",
   ];
-  if (!allowedPrefixes.some((prefix) => contentType.startsWith(prefix))) {
+  const isAllowedContentType = allowedPrefixes.some((allowed) =>
+    allowed.endsWith("/")
+      ? contentType.startsWith(allowed)
+      : contentType === allowed
+  );
+  if (!isAllowedContentType) {
     return NextResponse.json(
       { error: "Unsupported content type" },
       { status: 400 }
@@ -60,8 +65,8 @@ export async function POST(req: NextRequest) {
       requestedFolder = `submissions/${session.user.id}`;
     }
 
-    const expectedPrefix = `submissions/${session.user.id}`;
-    if (!requestedFolder.startsWith(expectedPrefix)) {
+    const expectedBase = `submissions/${session.user.id}`;
+    if (requestedFolder !== expectedBase && !requestedFolder.startsWith(`${expectedBase}/`)) {
       return NextResponse.json(
         { error: "Students can only upload to their own submissions folder." },
         { status: 403 }
@@ -94,9 +99,13 @@ export async function POST(req: NextRequest) {
   try {
     const url = await getSignedUploadUrl(key, contentType);
     return NextResponse.json({ url, key });
-  } catch {
+  } catch (error) {
+    const errorWithCode = error as Error & { code?: string };
     return NextResponse.json(
-      { error: "Failed to generate upload URL" },
+      {
+        error: "Failed to generate upload URL",
+        code: errorWithCode.code,
+      },
       { status: 500 }
     );
   }

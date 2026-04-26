@@ -340,6 +340,7 @@ function SubmissionFilePreview({
                 src={fileUrl}
                 title={fileName || "Submitted PDF preview"}
                 className="h-80 w-full"
+                sandbox="allow-same-origin"
               />
             ) : (
               <Image

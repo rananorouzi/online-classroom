@@ -29,12 +29,17 @@ export async function POST(req: NextRequest) {
 
   // Validate content type
   const allowedPrefixes = ["audio/", "video/", "application/pdf", "image/"];
-  if (!allowedPrefixes.some((p) => file.type.startsWith(p))) {
+  const isAllowedContentType = allowedPrefixes.some((allowed) =>
+    allowed.endsWith("/")
+      ? file.type.startsWith(allowed)
+      : file.type === allowed
+  );
+  if (!isAllowedContentType) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
   const ext = file.name.split(".").pop() || "bin";
-  const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
+  const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "bin";
   const fileName = `${randomUUID()}.${safeExt}`;
   const fileKey = `uploads/${fileName}`;
 

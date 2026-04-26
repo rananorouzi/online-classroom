@@ -1,10 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-
-// Load adapter at runtime to avoid editor/module-resolution mismatches.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PrismaPg } = require("@prisma/adapter-pg") as {
-  PrismaPg: new (options: { connectionString: string }) => unknown;
-};
+import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -31,7 +26,7 @@ function getDatabaseUrl() {
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: getDatabaseUrl() }) as never;
+  const adapter = new PrismaPg({ connectionString: getDatabaseUrl() });
   return new PrismaClient({
     adapter,
   });

@@ -122,6 +122,18 @@ export async function uploadMediaFile({
     return { key: data.key, fileName, fileType: contentType };
   }
 
-  // Local development fallback when signed uploads are unavailable.
-  return uploadToLocalRoute(file, fileName, onProgress);
+  type UploadErrorResponse = { error?: string; code?: string };
+  let errorBody: UploadErrorResponse | null = null;
+  try {
+    errorBody = (await response.json()) as UploadErrorResponse;
+  } catch {
+    errorBody = null;
+  }
+
+  const canFallbackToProxyUpload = errorBody?.code === "BLOB_DIRECT_UPLOAD_DISABLED";
+  if (canFallbackToProxyUpload) {
+    return uploadToLocalRoute(file, fileName, onProgress);
+  }
+
+  throw new Error(errorBody?.error || "Failed to get upload URL");
 }
