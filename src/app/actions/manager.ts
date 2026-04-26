@@ -89,10 +89,13 @@ export async function archiveTeacher(teacherId: string) {
   const teacher = await prisma.user.findUnique({ where: { id: teacherId } });
   if (!teacher || teacher.role !== "TEACHER") throw new Error("Teacher not found");
 
-  await prisma.user.update({
-    where: { id: teacherId },
-    data: { isArchived: true },
-  });
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: teacherId },
+      data: { isArchived: true },
+    }),
+    prisma.activeSession.deleteMany({ where: { userId: teacherId } }),
+  ]);
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/manager");
@@ -115,7 +118,7 @@ export async function unarchiveTeacher(teacherId: string) {
   revalidatePath("/dashboard/courses");
 }
 
-export async function removeTeacher(teacherId: string) {
+export async function archiveAndUnassignTeacher(teacherId: string) {
   const managerId = await requireManager();
   if (managerId === teacherId) throw new Error("You cannot remove your own account");
 
@@ -148,6 +151,7 @@ export async function removeTeacher(teacherId: string) {
       where: { id: teacherId },
       data: { isArchived: true },
     }),
+    prisma.activeSession.deleteMany({ where: { userId: teacherId } }),
   ]);
 
   revalidatePath("/dashboard");

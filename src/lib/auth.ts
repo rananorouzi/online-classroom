@@ -21,6 +21,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         sessionToken?: string;
       };
 
+      if (typeof token.sub === "string") {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { isArchived: true },
+        });
+
+        if (!currentUser || currentUser.isArchived) {
+          if (typeof token.sessionToken === "string" && token.sessionToken) {
+            await removeSession(token.sessionToken);
+          }
+          return {
+            ...token,
+            exp: 0,
+            sessionToken: undefined,
+          };
+        }
+      }
+
       if (params.user) {
         const signedInUser = params.user as { sessionToken?: string };
         token.sessionToken = signedInUser.sessionToken;
@@ -75,6 +93,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = emailInput.trim().toLowerCase();
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return null;
+        if (user.isArchived) return null;
 
         const valid = await bcrypt.compare(password, user.hashedPassword);
         if (!valid) return null;

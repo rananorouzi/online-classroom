@@ -6,9 +6,9 @@ import Avatar from "@/components/ui/Avatar";
 import AlertBanner from "@/components/ui/AlertBanner";
 import {
   addTeacher,
+  archiveAndUnassignTeacher,
   archiveTeacher,
   editTeacher,
-  removeTeacher,
   unarchiveTeacher,
 } from "@/app/actions/manager";
 
@@ -93,16 +93,20 @@ export default function TeacherManager({ teachers }: Props) {
     }, "Teacher updated");
   }
 
-  function handleRemoveTeacher(teacher: Teacher) {
+  function handleArchiveAndUnassignTeacher(teacher: Teacher) {
     if (teacher.studentsCount > 0) return;
 
-    if (!confirm(`Remove ${teacher.name || teacher.email}? This cannot be undone.`)) {
+    if (
+      !confirm(
+        `Archive ${teacher.name || teacher.email}? They will be unassigned from courses and can be restored later.`
+      )
+    ) {
       return;
     }
 
     wrap(async () => {
-      await removeTeacher(teacher.id);
-    }, "Teacher removed");
+      await archiveAndUnassignTeacher(teacher.id);
+    }, "Teacher archived and unassigned");
   }
 
   function TeacherRow({
@@ -207,12 +211,12 @@ export default function TeacherManager({ teachers }: Props) {
               )}
 
               <button
-                onClick={() => handleRemoveTeacher(teacher)}
+                onClick={() => handleArchiveAndUnassignTeacher(teacher)}
                 disabled={isPending || !canRemove}
-                title={canRemove ? "Remove teacher" : "Teacher can be removed only when they have no active students"}
+                title={canRemove ? "Archive and unassign teacher" : "Teacher can be archived only when they have no active students"}
                 className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-red-400 transition hover:border-red-900/50 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Remove
+                Archive & Unassign
               </button>
             </div>
           </div>
