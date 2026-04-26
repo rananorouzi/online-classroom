@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useCallback } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import StyledAudioPlayer from "@/components/media/StyledAudioPlayer";
 import { uploadMediaFile } from "@/lib/client-upload";
 
@@ -137,9 +138,6 @@ function SubmissionReviewCard({ submission }: { submission: Submission }) {
       : `/api/media/download?key=${encodeURIComponent(submission.fileKey)}`
     : null;
 
-  const isVideo = submission.fileType?.startsWith("video/");
-  const isAudio = submission.fileType?.startsWith("audio/");
-
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 space-y-3">
       {/* Student info + status */}
@@ -172,25 +170,11 @@ function SubmissionReviewCard({ submission }: { submission: Submission }) {
           <p className="mb-2 text-xs text-zinc-500">
             Submitted: {submission.fileName}
           </p>
-          {isVideo && (
-            <video
-              src={fileUrl}
-              controls
-              className="w-full rounded-lg"
-              style={{ maxHeight: 300 }}
-            />
-          )}
-          {isAudio && fileUrl && <StyledAudioPlayer src={fileUrl} />}
-          {!isVideo && !isAudio && (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gold hover:underline"
-            >
-              Download {submission.fileName}
-            </a>
-          )}
+          <SubmissionFilePreview
+            fileUrl={fileUrl}
+            fileType={submission.fileType}
+            fileName={submission.fileName}
+          />
         </div>
       )}
 
@@ -285,6 +269,107 @@ function SubmissionReviewCard({ submission }: { submission: Submission }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SubmissionFilePreview({
+  fileUrl,
+  fileType,
+  fileName,
+}: {
+  fileUrl: string;
+  fileType: string | null;
+  fileName: string | null;
+}) {
+  const [showPreview, setShowPreview] = useState(true);
+
+  const isVideo = !!fileType?.startsWith("video/");
+  const isAudio = !!fileType?.startsWith("audio/");
+  const isImage = !!fileType?.startsWith("image/");
+  const isPdf = fileType === "application/pdf";
+
+  if (isVideo) {
+    return (
+      <video
+        src={fileUrl}
+        controls
+        className="w-full rounded-lg"
+        style={{ maxHeight: 300 }}
+      />
+    );
+  }
+
+  if (isAudio) {
+    return <StyledAudioPlayer src={fileUrl} />;
+  }
+
+  if (isImage || isPdf) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-zinc-500">
+            {isPdf ? "PDF file" : "Image file"}
+          </span>
+          <button
+            onClick={() => setShowPreview((v) => !v)}
+            className="text-xs text-zinc-400 hover:text-zinc-200"
+          >
+            {showPreview ? "Hide preview" : "Show preview"}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gold hover:underline"
+          >
+            Open in new tab
+          </a>
+          <a href={fileUrl} download className="text-sm text-zinc-300 hover:text-zinc-100">
+            Download {fileName || "file"}
+          </a>
+        </div>
+
+        {showPreview && (
+          <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
+            {isPdf ? (
+              <iframe
+                src={fileUrl}
+                title={fileName || "Submitted PDF preview"}
+                className="h-80 w-full"
+              />
+            ) : (
+              <Image
+                src={fileUrl}
+                alt={fileName || "Submitted image preview"}
+                width={1400}
+                height={900}
+                unoptimized
+                className="max-h-[24rem] w-full object-contain"
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-gold hover:underline"
+      >
+        Open in new tab
+      </a>
+      <a href={fileUrl} download className="text-sm text-zinc-300 hover:text-zinc-100">
+        Download {fileName || "file"}
+      </a>
     </div>
   );
 }
