@@ -113,13 +113,25 @@ For local development, you can also use:
 npx prisma migrate dev
 ```
 
-### 4. (Optional) Seed sample data
+### 4. Seed sample data (includes default manager)
 
 ```bash
 npx prisma db seed
 ```
 
-### 5. Start development server
+Default seeded users:
+
+- `manager@musicacademy.pro / manager123` (ADMIN)
+
+### 5. One-command local setup
+
+```bash
+npm run setup
+```
+
+This runs schema sync + seed in one step.
+
+### 6. Start development server
 
 ```bash
 npm run dev

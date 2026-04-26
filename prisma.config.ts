@@ -7,6 +7,7 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
     // Keep Prisma CLI and runtime client on the same SQLite file.
