@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { unlink } from "fs/promises";
 import path from "path";
+import { BCRYPT_SALT_ROUNDS } from "@/lib/security";
 
 const ATTACHMENT_SEPARATOR = "\n";
 
@@ -744,7 +745,7 @@ export async function addStudent(
   const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (existing) throw new Error("A user with this email already exists");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   const student = await prisma.user.create({
     data: {
@@ -809,7 +810,7 @@ export async function resetStudentPassword(
   if (!student || student.role !== "STUDENT")
     throw new Error("Student not found");
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
   await prisma.user.update({
     where: { id: studentId },

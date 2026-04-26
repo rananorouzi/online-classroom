@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { BCRYPT_SALT_ROUNDS } from "@/lib/security";
 
 export async function updateProfile(name: string) {
   const session = await auth();
@@ -42,7 +43,7 @@ export async function changePassword(
 
   if (newPassword.length < 6) throw new Error("Password must be at least 6 characters");
 
-  const hashed = await bcrypt.hash(newPassword, 12);
+  const hashed = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
   await prisma.user.update({
     where: { id: session.user.id },
     data: { hashedPassword: hashed },

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { useLogout } from "@/components/layout/useLogout";
 
 interface Session {
   id: string;
@@ -36,6 +37,7 @@ export default function SidebarTimeline({
 }: SidebarTimelineProps) {
   const { data: authSession } = useSession();
   const isManager = (authSession?.user as { role?: string } | undefined)?.role === "ADMIN";
+  const { logout, isLogoutPending } = useLogout();
 
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(() => {
     // Auto-expand the week containing the current session or the current week
@@ -48,16 +50,8 @@ export default function SidebarTimeline({
     setExpandedWeeks((prev) => ({ ...prev, [weekId]: !prev[weekId] }));
   }
 
-  const [isLogoutPending, setIsLogoutPending] = useState(false);
-
   async function handleLogout() {
-    try {
-      setIsLogoutPending(true);
-      await signOut({ callbackUrl: "/auth/login" });
-    } catch (error) {
-      console.error("Failed to sign out", error);
-      setIsLogoutPending(false);
-    }
+    await logout();
   }
 
   return (

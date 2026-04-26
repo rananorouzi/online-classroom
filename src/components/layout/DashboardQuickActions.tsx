@@ -2,25 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useLogout } from "@/components/layout/useLogout";
 
 export default function DashboardQuickActions() {
   const pathname = usePathname();
-  const [isLogoutPending, setIsLogoutPending] = useState(false);
+  const { logout, isLogoutPending } = useLogout();
 
   if (pathname.startsWith("/dashboard/course/")) {
     return null;
   }
 
   async function handleLogout() {
-    try {
-      setIsLogoutPending(true);
-      await signOut({ callbackUrl: "/auth/login" });
-    } catch (error) {
-      console.error("Failed to sign out", error);
-      setIsLogoutPending(false);
-    }
+    await logout();
   }
 
   return (

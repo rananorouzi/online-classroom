@@ -9,6 +9,8 @@ import {
 } from "@/lib/session-guard";
 import { authConfig } from "@/lib/auth.config";
 
+const ARCHIVED_RECHECK_MS = 60_000;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -19,9 +21,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         : params.token;
       const token = baseToken as typeof baseToken & {
         sessionToken?: string;
+        archivedCheckedAt?: number;
       };
 
-      if (typeof token.sub === "string") {
+      const now = Date.now();
+      const shouldCheckArchivedStatus =
+        typeof token.sub === "string" &&
+        (params.user ||
+          typeof token.archivedCheckedAt !== "number" ||
+          now - token.archivedCheckedAt >= ARCHIVED_RECHECK_MS);
+
+      if (shouldCheckArchivedStatus) {
         const currentUser = await prisma.user.findUnique({
           where: { id: token.sub },
           select: { isArchived: true },
@@ -35,8 +45,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ...token,
             exp: 0,
             sessionToken: undefined,
+            archivedCheckedAt: now,
           };
         }
+
+        token.archivedCheckedAt = now;
       }
 
       if (params.user) {

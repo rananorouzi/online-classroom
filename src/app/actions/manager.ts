@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { BCRYPT_SALT_ROUNDS } from "@/lib/security";
 
 async function requireManager() {
   const session = await auth();
@@ -32,7 +33,7 @@ export async function addTeacher(name: string, email: string, password: string) 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) throw new Error("A user with this email already exists");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   const teacher = await prisma.user.create({
     data: {

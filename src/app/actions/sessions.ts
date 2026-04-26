@@ -7,8 +7,8 @@ import { prisma } from "@/lib/db";
 type JsonValue = Prisma.JsonValue;
 
 /**
- * Get course weeks with drip-content filtering.
- * Only returns weeks where releaseAt <= now.
+ * Get course weeks with drip-content locking.
+ * Returns all weeks/sessions, marking future content as locked.
  */
 export async function getCourseWeeks(courseId: string) {
   const session = await auth();

@@ -60,7 +60,7 @@ export default function TeacherManager({ teachers }: Props) {
         setSuccess(message);
         router.refresh();
       } catch (e: unknown) {
-        setError((e as Error).message);
+        setError(e instanceof Error ? e.message : String(e));
       }
     });
   }

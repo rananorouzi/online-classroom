@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateProfile, changePassword } from "@/app/actions/settings";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { useLogout } from "@/components/layout/useLogout";
 
 interface SettingsFormProps {
   user: { id: string; name: string | null; email: string; role: string };
@@ -15,7 +15,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isLogoutPending, setIsLogoutPending] = useState(false);
+  const { logout, isLogoutPending, clearLogoutError } = useLogout();
 
   const handleUpdateProfile = () => {
     setMessage(null);
@@ -49,16 +49,13 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
   const handleLogout = async () => {
     setMessage(null);
-    setIsLogoutPending(true);
-    try {
-      await signOut({ callbackUrl: "/auth/login" });
-    } catch (e) {
+    clearLogoutError();
+    const result = await logout();
+    if (!result.ok) {
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "Failed to sign out",
+        text: result.error || "Failed to sign out",
       });
-    } finally {
-      setIsLogoutPending(false);
     }
   };
 
