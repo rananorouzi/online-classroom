@@ -13,9 +13,16 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // Implement your user lookup and password check here
-        // This is a stub; real logic should be in src/lib/auth.ts
-        return null;
+  // Real implementation: check user credentials using Prisma and bcrypt
+  const { prisma } = await import("@/lib/db");
+  const bcrypt = (await import("bcryptjs")).default;
+  if (!credentials?.email || !credentials?.password) return null;
+  const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+  if (!user || !user.password) return null;
+  const isValid = await bcrypt.compare(credentials.password, user.password);
+  if (!isValid) return null;
+  // Return user object (id, email, role, etc.)
+  return { id: user.id, email: user.email, role: user.role };
       },
     },
   ],
