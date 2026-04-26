@@ -41,19 +41,31 @@ export default async function StudentsPage() {
       email: true,
       isArchived: true,
       createdAt: true,
-      enrollments: {
-        where: {
-          course: {
-            enrollments: {
-              some: { userId: teacherId },
-            },
-          },
-        },
-        select: { id: true },
-      },
     },
     orderBy: [{ isArchived: "asc" }, { name: "asc" }],
   });
+
+  const sharedCourseCounts = await prisma.enrollment.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: students.map((student) => student.id) },
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
+    _count: { userId: true },
+  });
+
+  const sharedCourseCountByStudentId = new Map(
+    sharedCourseCounts.map((entry) => [entry.userId, entry._count.userId])
+  );
+
+  const studentsWithCounts = students.map((student) => ({
+    ...student,
+    sharedCoursesCount: sharedCourseCountByStudentId.get(student.id) ?? 0,
+  }));
 
   return (
     <main className="px-6 py-12">
@@ -72,7 +84,7 @@ export default async function StudentsPage() {
         </p>
       </div>
 
-      <StudentManager students={students} />
+      <StudentManager students={studentsWithCounts} />
     </main>
   );
 }

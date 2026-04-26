@@ -73,19 +73,31 @@ export default async function DashboardPage() {
         id: true,
         email: true,
         name: true,
-        enrollments: {
-          where: {
-            course: {
-              enrollments: {
-                some: { userId: teacherId },
-              },
-            },
-          },
-          select: { id: true },
-        },
       },
       orderBy: { name: "asc" },
     });
+
+    const sharedCourseCounts = await prisma.enrollment.groupBy({
+      by: ["userId"],
+      where: {
+        userId: { in: students.map((student) => student.id) },
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+      _count: { userId: true },
+    });
+
+    const sharedCourseCountByStudentId = new Map(
+      sharedCourseCounts.map((entry) => [entry.userId, entry._count.userId])
+    );
+
+    const studentsWithCounts = students.map((student) => ({
+      ...student,
+      sharedCoursesCount: sharedCourseCountByStudentId.get(student.id) ?? 0,
+    }));
 
     return (
       <main className="px-6 py-12">
@@ -120,13 +132,13 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {students.length === 0 ? (
+        {studentsWithCounts.length === 0 ? (
           <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-12 text-center">
             <p className="text-zinc-400">No students registered yet.</p>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {students.map((student: (typeof students)[number]) => (
+            {studentsWithCounts.map((student: (typeof studentsWithCounts)[number]) => (
               <Link
                 key={student.id}
                 href={`/dashboard/student/${student.id}`}
@@ -144,7 +156,7 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs text-zinc-600">
-                  {student.enrollments.length} shared course{student.enrollments.length > 1 ? "s" : ""}
+                  {student.sharedCoursesCount} shared course{student.sharedCoursesCount > 1 ? "s" : ""}
                 </p>
               </Link>
             ))}

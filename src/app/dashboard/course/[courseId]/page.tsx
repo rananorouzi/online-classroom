@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getCourseWeeks } from "@/app/actions/sessions";
+import { prisma } from "@/lib/db";
 import Link from "next/link";
 
 interface Props {
@@ -12,15 +13,26 @@ export default async function CoursePage({ params }: Props) {
   if (!session?.user) redirect("/auth/login");
 
   const { courseId } = await params;
-  let weeks: Awaited<ReturnType<typeof getCourseWeeks>>;
-  try {
-    weeks = await getCourseWeeks(courseId);
-  } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
+  const userRole = (session.user as { role?: string }).role;
+  const isAdmin = userRole === "ADMIN";
+
+  if (!isAdmin) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId: session.user.id,
+          courseId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
       redirect("/dashboard");
     }
-    throw error;
   }
+
+  const weeks = await getCourseWeeks(courseId);
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
 
   return (
