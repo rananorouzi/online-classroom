@@ -10,7 +10,8 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    // Keep Prisma CLI and runtime client on the same SQLite file.
-    url: process.env["DATABASE_URL"] || "file:./prisma/dev.db",
+    url:
+      process.env["DATABASE_URL"] ||
+      "postgresql://postgres:postgres@localhost:5432/online_classroom?schema=public",
   },
 });

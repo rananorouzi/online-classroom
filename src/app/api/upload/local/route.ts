@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
 
 /**
  * Local file upload for dev environment.
@@ -28,21 +29,47 @@ export async function POST(req: NextRequest) {
 
   // Validate content type
   const allowedPrefixes = ["audio/", "video/", "application/pdf", "image/"];
-  if (!allowedPrefixes.some((p) => file.type.startsWith(p))) {
+  const isAllowedContentType = allowedPrefixes.some((allowed) =>
+    allowed.endsWith("/")
+      ? file.type.startsWith(allowed)
+      : file.type === allowed
+  );
+  if (!isAllowedContentType) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
   const ext = file.name.split(".").pop() || "bin";
-  const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
+  const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "bin";
   const fileName = `${randomUUID()}.${safeExt}`;
+  const fileKey = `uploads/${fileName}`;
+
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    try {
+      const blob = await put(fileKey, file, {
+        access: "public",
+        addRandomSuffix: false,
+      });
+
+      return NextResponse.json({
+        key: fileKey,
+        fileName: file.name,
+        fileType: file.type,
+        url: blob.url,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Blob upload failed. Check BLOB_READ_WRITE_TOKEN." },
+        { status: 500 }
+      );
+    }
+  }
+
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
 
   await mkdir(uploadsDir, { recursive: true });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(uploadsDir, fileName), buffer);
-
-  const fileKey = `uploads/${fileName}`;
 
   return NextResponse.json({
     key: fileKey,

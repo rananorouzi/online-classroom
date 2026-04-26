@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { uploadMediaFile } from "@/lib/client-upload";
 
 interface ResumableUploadProps {
   onUploadComplete: (fileKey: string, fileName: string, fileType: string) => void;
@@ -35,37 +36,17 @@ export default function ResumableUpload({
       setProgress(0);
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/upload/local");
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            setProgress(Math.round((event.loaded / event.total) * 100));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-            onUploadComplete(data.key, data.fileName, data.fileType);
-            setUploading(false);
-            setProgress(0);
-            setFileName(null);
-          } else {
-            setError("Upload failed");
-            setUploading(false);
-          }
-        };
-
-        xhr.onerror = () => {
-          setError("Upload failed — network error");
-          setUploading(false);
-        };
-
-        xhr.send(formData);
+        const data = await uploadMediaFile({
+          file,
+          fileName: file.name,
+          contentType: file.type,
+          folder: "submissions",
+          onProgress: setProgress,
+        });
+        onUploadComplete(data.key, data.fileName, data.fileType);
+        setUploading(false);
+        setProgress(0);
+        setFileName(null);
       } catch {
         setError("Upload failed");
         setUploading(false);

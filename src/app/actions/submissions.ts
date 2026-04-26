@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 /**
- * Student: Create or update a submission (upload).
- * Transitions: IDLE -> PENDING, REVISION -> PENDING
+ * Student: Create a new submission (upload).
+ * Each upload is preserved as a separate record.
  */
 export async function submitWork(
   checklistItemId: string,
@@ -63,35 +63,16 @@ export async function submitWork(
     }
   }
 
-  const existingSubmission = await prisma.submission.findFirst({
-    where: {
+  const submission = await prisma.submission.create({
+    data: {
       checklistItemId,
       studentId: session.user.id,
+      status: "PENDING",
+      fileKey,
+      fileName,
+      fileType,
     },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
   });
-
-  const submission = existingSubmission
-    ? await prisma.submission.update({
-        where: { id: existingSubmission.id },
-        data: {
-          status: "PENDING",
-          fileKey,
-          fileName,
-          fileType,
-        },
-      })
-    : await prisma.submission.create({
-        data: {
-          checklistItemId,
-          studentId: session.user.id,
-          status: "PENDING",
-          fileKey,
-          fileName,
-          fileType,
-        },
-      });
 
   revalidatePath("/dashboard");
   return submission;

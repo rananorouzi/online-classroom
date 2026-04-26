@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import SidebarTimeline from "@/components/layout/SidebarTimeline";
 import Checklist from "@/components/ui/Checklist";
+import { uploadMediaFile } from "@/lib/client-upload";
 
 const MemoizedSidebar = memo(SidebarTimeline);
 const MemoizedChecklist = memo(Checklist);
@@ -146,20 +147,21 @@ export default function SessionPageClient({
     setIsUploading(true);
     try {
       const ext = type === "audio" ? "webm" : "webm";
-      const formData = new FormData();
-      formData.append("file", blob, `recording.${ext}`);
-      const res = await fetch("/api/upload/local", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        const { submitWork } = await import("@/app/actions/submissions");
-        await submitWork(uploadItemId, data.key, data.fileName, data.fileType);
-        setSubmitNotice(
-          type === "audio"
-            ? "Voice recording submitted successfully."
-            : "Video recording submitted successfully."
-        );
-        setUploadItemId(null);
-      }
+      const fileType = type === "audio" ? "audio/webm" : "video/webm";
+      const data = await uploadMediaFile({
+        file: blob,
+        fileName: `recording.${ext}`,
+        contentType: fileType,
+        folder: "submissions",
+      });
+      const { submitWork } = await import("@/app/actions/submissions");
+      await submitWork(uploadItemId, data.key, data.fileName, data.fileType);
+      setSubmitNotice(
+        type === "audio"
+          ? "Voice recording submitted successfully."
+          : "Video recording submitted successfully."
+      );
+      setUploadItemId(null);
     } catch (err) {
       console.error("Submit failed", err);
     } finally {

@@ -1,10 +1,7 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-
-type JsonValue = Prisma.JsonValue;
 
 /**
  * Get course weeks with drip-content locking.
@@ -137,6 +134,7 @@ export async function getSession(sessionId: string) {
         include: {
           submissions: {
             where: isStaff ? {} : { studentId: userSession.user.id },
+            orderBy: { createdAt: "desc" },
             include: {
               student: { select: { id: true, name: true, email: true } },
               feedbacks: {

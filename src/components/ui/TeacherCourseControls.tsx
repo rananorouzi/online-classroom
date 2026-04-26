@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/teacher";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { uploadMediaFile } from "@/lib/client-upload";
 
 function parseAttachmentKeys(value: string | null): string[] {
   if (!value) return [];
@@ -423,21 +424,15 @@ function SessionRow({
     setUploadError(null);
     setVideoUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload/local", {
-        method: "POST",
-        body: formData,
+      const data = await uploadMediaFile({
+        file,
+        fileName: file.name,
+        contentType: file.type,
+        folder: `lessons/${session.id}`,
       });
-      if (res.ok) {
-        const data = await res.json();
-        await updateSessionVideo(session.id, data.key);
-        router.refresh();
-        setUploadMsg("Video uploaded successfully.");
-      } else {
-        const body = await res.json().catch(() => ({}));
-        setUploadError(body.error || "Upload failed. Please try again.");
-      }
+      await updateSessionVideo(session.id, data.key);
+      router.refresh();
+      setUploadMsg("Video uploaded successfully.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed. Please try again.";
       setUploadError(msg);
@@ -562,21 +557,15 @@ function SessionRow({
                 setUploadError(null);
                 setAttachmentUploading(true);
                 try {
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  const res = await fetch("/api/upload/local", {
-                    method: "POST",
-                    body: formData,
+                  const data = await uploadMediaFile({
+                    file,
+                    fileName: file.name,
+                    contentType: file.type,
+                    folder: `lessons/${session.id}`,
                   });
-                  if (res.ok) {
-                    const data = await res.json();
-                    await updateSessionAttachment(session.id, data.key);
-                    router.refresh();
-                    setUploadMsg("Attachment uploaded successfully.");
-                  } else {
-                    const body = await res.json().catch(() => ({}));
-                    setUploadError(body.error || "Upload failed. Please try again.");
-                  }
+                  await updateSessionAttachment(session.id, data.key);
+                  router.refresh();
+                  setUploadMsg("Attachment uploaded successfully.");
                 } catch (err) {
                   const msg = err instanceof Error ? err.message : "Upload failed. Please try again.";
                   setUploadError(msg);
