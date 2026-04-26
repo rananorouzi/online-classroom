@@ -55,9 +55,58 @@ async function writeSessionAttachmentKey(
 
 function requireTeacher(session: { user?: { id?: string } } | null) {
   if (!session?.user) throw new Error("Unauthorized");
-  if ((session.user as { role?: string }).role !== "TEACHER")
+  if ((session.user as { role?: string }).role !== "TEACHER") {
     throw new Error("Only teachers can perform this action");
+  }
   return session.user.id!;
+}
+
+async function ensureTeacherHasCourseAccess(teacherId: string, courseId: string) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: {
+      userId_courseId: {
+        userId: teacherId,
+        courseId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!enrollment) {
+    throw new Error("You do not have access to this course");
+  }
+}
+
+async function ensureTeacherCanManageStudent(teacherId: string, studentId: string) {
+  const student = await prisma.user.findFirst({
+    where: {
+      id: studentId,
+      role: "STUDENT",
+      OR: [
+        {
+          enrollments: {
+            some: {
+              course: {
+                enrollments: {
+                  some: { userId: teacherId },
+                },
+              },
+            },
+          },
+        },
+        {
+          enrollments: {
+            none: {},
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (!student) {
+    throw new Error("Student not found or not in your courses");
+  }
 }
 
 async function deleteAttachmentFile(attachmentKey: string): Promise<void> {
@@ -90,9 +139,10 @@ export async function createWeek(
   releaseAt?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Title is required");
+  await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   // Get the next week number
   const lastWeek = await prisma.week.findFirst({
@@ -123,11 +173,24 @@ export async function updateWeek(
   releaseAt?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Week title is required");
 
-  const week = await prisma.week.update({
+  const week = await prisma.week.findFirst({
+    where: {
+      id: weekId,
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
+    select: { id: true, courseId: true },
+  });
+  if (!week) throw new Error("Week not found");
+
+  await prisma.week.update({
     where: { id: weekId },
     data: {
       title: title.trim(),
@@ -144,9 +207,19 @@ export async function updateWeek(
  */
 export async function deleteWeek(weekId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
-  const week = await prisma.week.findUnique({ where: { id: weekId } });
+  const week = await prisma.week.findFirst({
+    where: {
+      id: weekId,
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
+    select: { id: true, courseId: true },
+  });
   if (!week) throw new Error("Week not found");
 
   await prisma.week.delete({ where: { id: weekId } });
@@ -164,13 +237,20 @@ export async function createSession(
   attachmentKey?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Title is required");
 
   // Get the week to find courseId and next order
-  const week = await prisma.week.findUnique({
-    where: { id: weekId },
+  const week = await prisma.week.findFirst({
+    where: {
+      id: weekId,
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
     include: { sessions: { orderBy: { order: "desc" }, take: 1 } },
   });
   if (!week) throw new Error("Week not found");
@@ -211,12 +291,21 @@ export async function updateSession(
   description?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Session title is required");
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: { week: true },
   });
   if (!sess) throw new Error("Session not found");
@@ -239,10 +328,19 @@ export async function updateSession(
  */
 export async function deleteSession(sessionId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: { week: true },
   });
   if (!sess) throw new Error("Session not found");
@@ -260,12 +358,21 @@ export async function createChecklistItem(
   description?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Title is required");
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: {
       checklistItems: { orderBy: { order: "desc" }, take: 1 },
       week: true,
@@ -296,10 +403,19 @@ export async function updateSessionVideo(
   videoKey: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: { week: true },
   });
   if (!sess) throw new Error("Session not found");
@@ -320,10 +436,19 @@ export async function updateSessionAttachment(
   attachmentKey: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: { week: true },
   });
   if (!sess) throw new Error("Session not found");
@@ -361,10 +486,19 @@ export async function removeSessionAttachment(
   attachmentKey: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
-  const sess = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const sess = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      week: {
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+    },
     include: { week: true },
   });
   if (!sess) throw new Error("Session not found");
@@ -403,15 +537,26 @@ export async function removeSessionAttachment(
 
 export async function createCourse(title: string, description?: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Title is required");
 
-  const course = await prisma.course.create({
-    data: {
-      title: title.trim(),
-      description: description?.trim() || null,
-    },
+  const course = await prisma.$transaction(async (tx) => {
+    const createdCourse = await tx.course.create({
+      data: {
+        title: title.trim(),
+        description: description?.trim() || null,
+      },
+    });
+
+    await tx.enrollment.create({
+      data: {
+        userId: teacherId,
+        courseId: createdCourse.id,
+      },
+    });
+
+    return createdCourse;
   });
 
   revalidatePath("/dashboard/courses");
@@ -424,9 +569,10 @@ export async function updateCourse(
   description?: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!title.trim()) throw new Error("Title is required");
+  await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   const course = await prisma.course.update({
     where: { id: courseId },
@@ -443,7 +589,8 @@ export async function updateCourse(
 
 export async function deleteCourse(courseId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
+  await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   const enrollmentCount = await prisma.enrollment.count({
     where: { courseId },
@@ -464,7 +611,8 @@ export async function deleteCourse(courseId: string) {
 
 export async function enrollStudent(courseId: string, studentId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
+  await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   const student = await prisma.user.findUnique({
     where: { id: studentId, role: "STUDENT" },
@@ -486,7 +634,8 @@ export async function enrollStudent(courseId: string, studentId: string) {
 
 export async function unenrollStudent(courseId: string, studentId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
+  await ensureTeacherHasCourseAccess(teacherId, courseId);
 
   await prisma.enrollment.deleteMany({
     where: { userId: studentId, courseId },
@@ -498,10 +647,30 @@ export async function unenrollStudent(courseId: string, studentId: string) {
 
 export async function getStudents() {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   return prisma.user.findMany({
-    where: { role: "STUDENT" },
+    where: {
+      role: "STUDENT",
+      OR: [
+        {
+          enrollments: {
+            some: {
+              course: {
+                enrollments: {
+                  some: { userId: teacherId },
+                },
+              },
+            },
+          },
+        },
+        {
+          enrollments: {
+            none: {},
+          },
+        },
+      ],
+    },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
@@ -511,7 +680,8 @@ export async function getStudents() {
 
 export async function assignTeacher(courseId: string, teacherId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const currentTeacherId = requireTeacher(session);
+  await ensureTeacherHasCourseAccess(currentTeacherId, courseId);
 
   const teacher = await prisma.user.findUnique({
     where: { id: teacherId, role: "TEACHER" },
@@ -532,7 +702,8 @@ export async function assignTeacher(courseId: string, teacherId: string) {
 
 export async function unassignTeacher(courseId: string, teacherId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const currentTeacherId = requireTeacher(session);
+  await ensureTeacherHasCourseAccess(currentTeacherId, courseId);
 
   await prisma.enrollment.deleteMany({
     where: { userId: teacherId, courseId },
@@ -580,11 +751,12 @@ export async function editStudent(
   email: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!name.trim()) throw new Error("Name is required");
   if (!email.trim()) throw new Error("Email is required");
 
+  await ensureTeacherCanManageStudent(teacherId, studentId);
   const student = await prisma.user.findUnique({ where: { id: studentId } });
   if (!student || student.role !== "STUDENT")
     throw new Error("Student not found");
@@ -613,11 +785,12 @@ export async function resetStudentPassword(
   newPassword: string
 ) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
   if (!newPassword || newPassword.length < 6)
     throw new Error("Password must be at least 6 characters");
 
+  await ensureTeacherCanManageStudent(teacherId, studentId);
   const student = await prisma.user.findUnique({ where: { id: studentId } });
   if (!student || student.role !== "STUDENT")
     throw new Error("Student not found");
@@ -634,8 +807,9 @@ export async function resetStudentPassword(
 
 export async function archiveStudent(studentId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
+  await ensureTeacherCanManageStudent(teacherId, studentId);
   const student = await prisma.user.findUnique({ where: { id: studentId } });
   if (!student || student.role !== "STUDENT")
     throw new Error("Student not found");
@@ -650,8 +824,9 @@ export async function archiveStudent(studentId: string) {
 
 export async function unarchiveStudent(studentId: string) {
   const session = await auth();
-  requireTeacher(session);
+  const teacherId = requireTeacher(session);
 
+  await ensureTeacherCanManageStudent(teacherId, studentId);
   const student = await prisma.user.findUnique({ where: { id: studentId } });
   if (!student || student.role !== "STUDENT")
     throw new Error("Student not found");

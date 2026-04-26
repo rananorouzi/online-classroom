@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateProfile, changePassword } from "@/app/actions/settings";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 
 interface SettingsFormProps {
   user: { id: string; name: string | null; email: string; role: string };
@@ -14,6 +15,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isLogoutPending, startLogoutTransition] = useTransition();
 
   const handleUpdateProfile = () => {
     setMessage(null);
@@ -45,15 +47,40 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     });
   };
 
+  const handleLogout = () => {
+    startLogoutTransition(async () => {
+      await signOut({ callbackUrl: "/auth/login" });
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* Back link */}
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-300 transition"
-      >
-        ← Back to Dashboard
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-300 transition"
+          >
+            ← Back to Dashboard
+          </Link>
+          {user.role === "ADMIN" && (
+            <Link
+              href="/dashboard/manager"
+              className="inline-flex items-center gap-1 text-sm text-gold/70 hover:text-gold transition"
+            >
+              Manage Teachers
+            </Link>
+          )}
+        </div>
+        <button
+          onClick={handleLogout}
+          disabled={isLogoutPending}
+          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-red-900/50 hover:text-red-300 disabled:opacity-50"
+        >
+          {isLogoutPending ? "Signing out..." : "Logout"}
+        </button>
+      </div>
 
       {/* Status message */}
       {message && (

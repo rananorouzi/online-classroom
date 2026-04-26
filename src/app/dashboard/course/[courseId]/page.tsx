@@ -12,7 +12,12 @@ export default async function CoursePage({ params }: Props) {
   if (!session?.user) redirect("/auth/login");
 
   const { courseId } = await params;
-  const weeks = await getCourseWeeks(courseId);
+  let weeks: Awaited<ReturnType<typeof getCourseWeeks>>;
+  try {
+    weeks = await getCourseWeeks(courseId);
+  } catch {
+    redirect("/dashboard");
+  }
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
 
   return (

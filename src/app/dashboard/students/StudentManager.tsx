@@ -18,7 +18,7 @@ interface Student {
   email: string;
   isArchived: boolean;
   createdAt: Date | string;
-  _count: { enrollments: number };
+  enrollments: { id: string }[];
 }
 
 interface Props {
@@ -126,7 +126,7 @@ export default function StudentManager({ students }: Props) {
                 <p className="text-sm font-medium text-primary truncate">{student.name || "Unnamed"}</p>
                 <p className="text-xs text-zinc-500 truncate">{student.email}</p>
                 <p className="text-[10px] text-zinc-600">
-                  {student._count.enrollments} course{student._count.enrollments !== 1 ? "s" : ""} · Joined {new Date(student.createdAt).toLocaleDateString("en-GB")}
+                  {student.enrollments.length} shared course{student.enrollments.length !== 1 ? "s" : ""} · Joined {new Date(student.createdAt).toLocaleDateString("en-GB")}
                 </p>
               </div>
             </div>

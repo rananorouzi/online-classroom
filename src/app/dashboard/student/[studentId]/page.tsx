@@ -15,11 +15,19 @@ export default async function StudentCoursesPage({ params }: Props) {
   if (!isTeacher) redirect("/dashboard");
 
   const { studentId } = await params;
+  const teacherId = session.user.id;
 
   const student = await prisma.user.findUnique({
     where: { id: studentId, role: "STUDENT" },
     include: {
       enrollments: {
+        where: {
+          course: {
+            enrollments: {
+              some: { userId: teacherId },
+            },
+          },
+        },
         include: {
           course: {
             include: {
@@ -35,7 +43,7 @@ export default async function StudentCoursesPage({ params }: Props) {
     },
   });
 
-  if (!student) notFound();
+  if (!student || student.enrollments.length === 0) notFound();
 
   return (
     <main className="px-6 py-12">

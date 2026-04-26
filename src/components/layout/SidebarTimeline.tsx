@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 
 interface Session {
   id: string;
@@ -33,6 +34,9 @@ export default function SidebarTimeline({
   currentSessionId,
   courseId,
 }: SidebarTimelineProps) {
+  const { data: session } = useSession();
+  const isManager = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
+
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(() => {
     // Auto-expand the week containing the current session or the current week
     const initial: Record<string, boolean> = {};
@@ -43,6 +47,14 @@ export default function SidebarTimeline({
   function toggleWeek(weekId: string) {
     setExpandedWeeks((prev) => ({ ...prev, [weekId]: !prev[weekId] }));
   }
+
+  const [isLogoutPending, setIsLogoutPending] = useState(false);
+
+  async function handleLogout() {
+    setIsLogoutPending(true);
+    await signOut({ callbackUrl: "/auth/login" });
+  }
+
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-zinc-800 bg-zinc-950 p-6">
       {/* Logo */}
@@ -180,12 +192,31 @@ export default function SidebarTimeline({
 
       {/* Footer */}
       <div className="mt-4 border-t border-zinc-800 pt-4">
-        <Link
-          href="/dashboard/settings"
-          className="text-xs text-zinc-500 transition hover:text-zinc-300"
-        >
-          Settings
-        </Link>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              href="/dashboard/settings"
+              className="text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Settings
+            </Link>
+            <button
+              onClick={handleLogout}
+              disabled={isLogoutPending}
+              className="text-xs text-zinc-500 transition hover:text-red-300 disabled:opacity-50"
+            >
+              {isLogoutPending ? "Signing out..." : "Logout"}
+            </button>
+          </div>
+          {isManager && (
+            <Link
+              href="/dashboard/manager"
+              className="block text-xs text-gold/70 transition hover:text-gold"
+            >
+              Manage Teachers
+            </Link>
+          )}
+        </div>
       </div>
     </aside>
   );

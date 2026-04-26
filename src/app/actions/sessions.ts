@@ -15,9 +15,9 @@ export async function getCourseWeeks(courseId: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const userRole = (session.user as { role?: string }).role;
-  const isTeacher = userRole === "TEACHER" || userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN";
 
-  if (!isTeacher) {
+  if (!isAdmin) {
     const enrollment = await prisma.enrollment.findUnique({
       where: {
         userId_courseId: {
@@ -77,7 +77,9 @@ export async function getSession(sessionId: string) {
   const userSession = await auth();
   if (!userSession?.user) throw new Error("Unauthorized");
 
-  const isTeacher = (userSession.user as { role?: string }).role === "TEACHER";
+  const userRole = (userSession.user as { role?: string }).role;
+  const isTeacher = userRole === "TEACHER";
+  const isAdmin = userRole === "ADMIN";
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -116,7 +118,7 @@ export async function getSession(sessionId: string) {
 
   if (!session) throw new Error("Session not found");
 
-  if (!isTeacher) {
+  if (!isAdmin) {
     const enrollment = await prisma.enrollment.findFirst({
       where: {
         userId: userSession.user.id,
