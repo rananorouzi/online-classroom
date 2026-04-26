@@ -48,8 +48,18 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   };
 
   const handleLogout = async () => {
+    setMessage(null);
     setIsLogoutPending(true);
-    await signOut({ callbackUrl: "/auth/login" });
+    try {
+      await signOut({ callbackUrl: "/auth/login" });
+    } catch (e) {
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Failed to sign out",
+      });
+    } finally {
+      setIsLogoutPending(false);
+    }
   };
 
   return (

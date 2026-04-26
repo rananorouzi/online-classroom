@@ -16,10 +16,7 @@ export default async function CoursePage({ params }: Props) {
   try {
     weeks = await getCourseWeeks(courseId);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message === "Unauthorized" || error.message === "Session not found")
-    ) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       redirect("/dashboard");
     }
     throw error;

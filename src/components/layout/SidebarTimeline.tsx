@@ -34,8 +34,8 @@ export default function SidebarTimeline({
   currentSessionId,
   courseId,
 }: SidebarTimelineProps) {
-  const { data: session } = useSession();
-  const isManager = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
+  const { data: authSession } = useSession();
+  const isManager = (authSession?.user as { role?: string } | undefined)?.role === "ADMIN";
 
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(() => {
     // Auto-expand the week containing the current session or the current week

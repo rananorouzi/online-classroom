@@ -82,6 +82,46 @@ export async function getSession(sessionId: string) {
   const isAdmin = userRole === "ADMIN";
   const isStaff = isTeacher || isAdmin;
 
+  const sessionAccess = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      releaseAt: true,
+      week: {
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          releaseAt: true,
+          courseId: true,
+        },
+      },
+    },
+  });
+
+  if (!sessionAccess) throw new Error("Session not found");
+
+  if (!isAdmin) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId: userSession.user.id,
+          courseId: sessionAccess.week.courseId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
+      throw new Error("Unauthorized");
+    }
+  }
+
+  // Drip content enforcement
+  if (sessionAccess.releaseAt > new Date()) {
+    throw new Error("This content is not yet available");
+  }
+
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     select: {
@@ -118,33 +158,6 @@ export async function getSession(sessionId: string) {
   });
 
   if (!session) throw new Error("Session not found");
-
-  if (!isAdmin) {
-    const enrollment = await prisma.enrollment.findFirst({
-      where: {
-        userId: userSession.user.id,
-        course: {
-          weeks: {
-            some: {
-              sessions: {
-                some: { id: sessionId },
-              },
-            },
-          },
-        },
-      },
-      select: { id: true },
-    });
-
-    if (!enrollment) {
-      throw new Error("Unauthorized");
-    }
-  }
-
-  // Drip content enforcement
-  if (session.releaseAt > new Date()) {
-    throw new Error("This content is not yet available");
-  }
 
   return session;
 }

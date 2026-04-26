@@ -142,7 +142,13 @@ export async function removeTeacher(teacherId: string) {
     throw new Error("Teacher cannot be removed while assigned to courses with students");
   }
 
-  await prisma.user.delete({ where: { id: teacherId } });
+  await prisma.$transaction([
+    prisma.enrollment.deleteMany({ where: { userId: teacherId } }),
+    prisma.user.update({
+      where: { id: teacherId },
+      data: { isArchived: true },
+    }),
+  ]);
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/manager");
