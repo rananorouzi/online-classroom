@@ -210,8 +210,16 @@ export async function updateWeek(
     throw new Error("Week not found");
   }
 
+  const updatedWeek = await prisma.week.findUnique({
+    where: { id: weekId },
+    select: { id: true, courseId: true, title: true, releaseAt: true },
+  });
+  if (!updatedWeek) {
+    throw new Error("Week not found");
+  }
+
   revalidatePath(`/dashboard/course/${week.courseId}`);
-  return week;
+  return updatedWeek;
 }
 
 /**

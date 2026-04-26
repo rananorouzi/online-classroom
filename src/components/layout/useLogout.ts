@@ -25,8 +25,9 @@ export function useLogout() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setLogoutError(message);
-      setIsLogoutPending(false);
       return { ok: false, error: message };
+    } finally {
+      setIsLogoutPending(false);
     }
   }, []);
 

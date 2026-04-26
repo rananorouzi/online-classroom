@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import bcrypt from "bcryptjs";
 import path from "path";
+import { BCRYPT_SALT_ROUNDS } from "../src/lib/security";
 
 const dbPath = path.resolve(__dirname, "dev.db");
 const adapter = new PrismaBetterSqlite3({ url: dbPath });
@@ -16,7 +17,7 @@ async function main() {
     create: {
       email: "manager@musicacademy.pro",
       name: "Studio Manager",
-      hashedPassword: await bcrypt.hash("manager123", 12),
+      hashedPassword: await bcrypt.hash("manager123", BCRYPT_SALT_ROUNDS),
       role: "ADMIN",
       isArchived: false,
     },

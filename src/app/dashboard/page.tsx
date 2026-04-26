@@ -144,9 +144,7 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs text-zinc-600">
-                  {student.enrollments.length === 0
-                    ? "No courses enrolled"
-                    : `${student.enrollments.length} shared course${student.enrollments.length > 1 ? "s" : ""}`}
+                  {student.enrollments.length} shared course{student.enrollments.length > 1 ? "s" : ""}
                 </p>
               </Link>
             ))}
