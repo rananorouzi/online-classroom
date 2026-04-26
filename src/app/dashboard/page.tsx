@@ -9,17 +9,95 @@ export default async function DashboardPage() {
 
   const userRole = (session.user as { role?: string }).role;
 
+  if (userRole === "ADMIN") {
+    const [activeTeachers, archivedTeachers] = await Promise.all([
+      prisma.user.count({ where: { role: "TEACHER", isArchived: false } }),
+      prisma.user.count({ where: { role: "TEACHER", isArchived: true } }),
+    ]);
+
+    return (
+      <main className="px-6 py-12">
+        <div className="mb-8">
+          <p className="text-xs font-medium uppercase tracking-wider text-gold">
+            Dashboard
+          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold text-primary">
+              Welcome back, {session.user.name || "Manager"}
+            </h1>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard/manager"
+                className="inline-flex items-center gap-2 rounded-lg border border-gold/30 bg-gold/5 px-4 py-2 text-sm font-medium text-gold transition hover:bg-gold/10 hover:border-gold/50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Manage Teachers
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-wider text-zinc-500">Active Teachers</p>
+            <p className="mt-2 text-3xl font-bold text-primary">{activeTeachers}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-wider text-zinc-500">Archived Teachers</p>
+            <p className="mt-2 text-3xl font-bold text-primary">{archivedTeachers}</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (userRole === "TEACHER") {
+    const teacherId = session.user.id;
     const students = await prisma.user.findMany({
-      where: { role: "STUDENT", isArchived: false },
+      where: {
+        role: "STUDENT",
+        isArchived: false,
+        enrollments: {
+          some: {
+            course: {
+              enrollments: {
+                some: { userId: teacherId },
+              },
+            },
+          },
+        },
+      },
       select: {
         id: true,
         email: true,
         name: true,
-        _count: { select: { enrollments: true } },
       },
       orderBy: { name: "asc" },
     });
+
+    const sharedCourseCounts = await prisma.enrollment.groupBy({
+      by: ["userId"],
+      where: {
+        userId: { in: students.map((student) => student.id) },
+        course: {
+          enrollments: {
+            some: { userId: teacherId },
+          },
+        },
+      },
+      _count: { userId: true },
+    });
+
+    const sharedCourseCountByStudentId = new Map(
+      sharedCourseCounts.map((entry) => [entry.userId, entry._count.userId])
+    );
+
+    const studentsWithCounts = students.map((student) => ({
+      ...student,
+      sharedCoursesCount: sharedCourseCountByStudentId.get(student.id) ?? 0,
+    }));
 
     return (
       <main className="px-6 py-12">
@@ -54,13 +132,13 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {students.length === 0 ? (
+        {studentsWithCounts.length === 0 ? (
           <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-12 text-center">
             <p className="text-zinc-400">No students registered yet.</p>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {students.map((student: (typeof students)[number]) => (
+            {studentsWithCounts.map((student: (typeof studentsWithCounts)[number]) => (
               <Link
                 key={student.id}
                 href={`/dashboard/student/${student.id}`}
@@ -78,9 +156,7 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs text-zinc-600">
-                  {student._count.enrollments === 0
-                    ? "No courses enrolled"
-                    : `${student._count.enrollments} course${student._count.enrollments > 1 ? "s" : ""}`}
+                  {student.sharedCoursesCount} shared course{student.sharedCoursesCount > 1 ? "s" : ""}
                 </p>
               </Link>
             ))}

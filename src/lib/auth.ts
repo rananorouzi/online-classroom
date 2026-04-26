@@ -9,6 +9,8 @@ import {
 } from "@/lib/session-guard";
 import { authConfig } from "@/lib/auth.config";
 
+const ARCHIVED_RECHECK_MS = 60_000;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -19,7 +21,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         : params.token;
       const token = baseToken as typeof baseToken & {
         sessionToken?: string;
+        archivedCheckedAt?: number;
       };
+
+      const now = Date.now();
+      const shouldCheckArchivedStatus =
+        typeof token.sub === "string" &&
+        (params.user ||
+          typeof token.archivedCheckedAt !== "number" ||
+          now - token.archivedCheckedAt >= ARCHIVED_RECHECK_MS);
+
+      if (shouldCheckArchivedStatus) {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { isArchived: true },
+        });
+
+        if (!currentUser || currentUser.isArchived) {
+          if (typeof token.sessionToken === "string" && token.sessionToken) {
+            await removeSession(token.sessionToken);
+          }
+          return {
+            ...token,
+            exp: 0,
+            sessionToken: undefined,
+            archivedCheckedAt: now,
+          };
+        }
+
+        token.archivedCheckedAt = now;
+      }
 
       if (params.user) {
         const signedInUser = params.user as { sessionToken?: string };
@@ -75,6 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = emailInput.trim().toLowerCase();
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return null;
+        if (user.isArchived) return null;
 
         const valid = await bcrypt.compare(password, user.hashedPassword);
         if (!valid) return null;

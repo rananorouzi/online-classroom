@@ -11,18 +11,61 @@ export default async function StudentsPage() {
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
   if (!isTeacher) redirect("/dashboard");
 
+  const teacherId = session.user.id;
+
   const students = await prisma.user.findMany({
-    where: { role: "STUDENT" },
+    where: {
+      role: "STUDENT",
+      OR: [
+        {
+          enrollments: {
+            some: {
+              course: {
+                enrollments: {
+                  some: { userId: teacherId },
+                },
+              },
+            },
+          },
+        },
+        {
+          enrollments: {
+            none: {},
+          },
+        },
+      ],
+    },
     select: {
       id: true,
       name: true,
       email: true,
       isArchived: true,
       createdAt: true,
-      _count: { select: { enrollments: true } },
     },
     orderBy: [{ isArchived: "asc" }, { name: "asc" }],
   });
+
+  const sharedCourseCounts = await prisma.enrollment.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: students.map((student) => student.id) },
+      course: {
+        enrollments: {
+          some: { userId: teacherId },
+        },
+      },
+    },
+    _count: { userId: true },
+  });
+
+  const sharedCourseCountByStudentId = new Map(
+    sharedCourseCounts.map((entry) => [entry.userId, entry._count.userId])
+  );
+
+  const studentsWithCounts = students.map((student) => ({
+    ...student,
+    sharedCoursesCount: sharedCourseCountByStudentId.get(student.id) ?? 0,
+  }));
 
   return (
     <main className="px-6 py-12">
@@ -41,7 +84,7 @@ export default async function StudentsPage() {
         </p>
       </div>
 
-      <StudentManager students={students} />
+      <StudentManager students={studentsWithCounts} />
     </main>
   );
 }

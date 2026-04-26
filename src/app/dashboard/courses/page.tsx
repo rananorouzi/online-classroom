@@ -11,7 +11,14 @@ export default async function CoursesPage() {
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
   if (!isTeacher) redirect("/dashboard");
 
+  const teacherId = session.user.id;
+
   const courses = await prisma.course.findMany({
+    where: {
+      enrollments: {
+        some: { userId: teacherId },
+      },
+    },
     include: {
       enrollments: {
         include: {
@@ -24,7 +31,27 @@ export default async function CoursesPage() {
   });
 
   const students = await prisma.user.findMany({
-    where: { role: "STUDENT" },
+    where: {
+      role: "STUDENT",
+      OR: [
+        {
+          enrollments: {
+            some: {
+              course: {
+                enrollments: {
+                  some: { userId: teacherId },
+                },
+              },
+            },
+          },
+        },
+        {
+          enrollments: {
+            none: {},
+          },
+        },
+      ],
+    },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });

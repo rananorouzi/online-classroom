@@ -18,8 +18,13 @@ export default async function ManageCoursePage({ params }: Props) {
 
   const { courseId } = await params;
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
+  const course = await prisma.course.findFirst({
+    where: {
+      id: courseId,
+      enrollments: {
+        some: { userId: session.user.id },
+      },
+    },
     select: { id: true, title: true },
   });
   if (!course) redirect("/dashboard");

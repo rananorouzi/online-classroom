@@ -15,11 +15,25 @@ export default async function StudentCoursesPage({ params }: Props) {
   if (!isTeacher) redirect("/dashboard");
 
   const { studentId } = await params;
+  const teacherId = session.user.id;
 
   const student = await prisma.user.findUnique({
     where: { id: studentId, role: "STUDENT" },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      _count: {
+        select: { enrollments: true },
+      },
       enrollments: {
+        where: {
+          course: {
+            enrollments: {
+              some: { userId: teacherId },
+            },
+          },
+        },
         include: {
           course: {
             include: {
@@ -36,6 +50,12 @@ export default async function StudentCoursesPage({ params }: Props) {
   });
 
   if (!student) notFound();
+
+  const hasSharedCourses = student.enrollments.length > 0;
+  const hasAnyCourse = student._count.enrollments > 0;
+
+  // Allow unassigned students, but block students that are only assigned to other teachers.
+  if (!hasSharedCourses && hasAnyCourse) notFound();
 
   return (
     <main className="px-6 py-12">
@@ -61,7 +81,7 @@ export default async function StudentCoursesPage({ params }: Props) {
 
       {student.enrollments.length === 0 ? (
         <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-12 text-center">
-          <p className="text-zinc-400">This student is not enrolled in any courses.</p>
+          <p className="text-zinc-400">This student is not assigned to your courses yet.</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
