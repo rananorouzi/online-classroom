@@ -65,10 +65,13 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        (session.user as { role: string }).role = token.role as string;
-      }
+      // Always set id, email, and role on session.user from token if available
+      session.user = {
+        ...session.user,
+        id: token.id as string,
+        email: token.email as string,
+        role: token.role as string,
+      };
       return session;
     },
   },
