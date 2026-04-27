@@ -33,17 +33,14 @@ export default async function ManagerPage() {
   const studentCounts = teacherIds.length
     ? await prisma.$queryRaw<Array<{ teacherId: string; studentsCount: number }>>(Prisma.sql`
         SELECT
-          teacher_enrollments.userId AS teacherId,
-          COUNT(DISTINCT student_enrollments.userId) AS studentsCount
-        FROM enrollments AS teacher_enrollments
-        INNER JOIN enrollments AS student_enrollments
-          ON teacher_enrollments.courseId = student_enrollments.courseId
-        INNER JOIN users AS students
-          ON students.id = student_enrollments.userId
-        WHERE teacher_enrollments.userId IN (${Prisma.join(teacherIds)})
-          AND students.role = 'STUDENT'
-          AND students.isArchived = false
-        GROUP BY teacher_enrollments.userId
+          t.id AS "teacherId",
+          COUNT(DISTINCT s.id) AS "studentsCount"
+        FROM users t
+        LEFT JOIN enrollments te ON te."userId" = t.id
+        LEFT JOIN enrollments se ON se."courseId" = te."courseId"
+        LEFT JOIN users s ON s.id = se."userId" AND s.role = 'STUDENT' AND s."isArchived" = false
+        WHERE t.id IN (${Prisma.join(teacherIds)})
+        GROUP BY t.id
       `)
     : [];
   const studentCountByTeacherId = new Map(
