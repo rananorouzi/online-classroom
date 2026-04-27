@@ -140,15 +140,37 @@ export default function Checklist({
   );
 }
 
-/** Pre-computed sparkle positions so we avoid Math.random during render */
-const SPARKLE_POSITIONS = Array.from({ length: 6 }, () => ({
-  ix: `${20 + Math.random() * 60}%`,
-  iy: `${20 + Math.random() * 60}%`,
-  ay: `${Math.random() * 40}%`,
-}));
 
-/** Subtle gold sparkle effect for approved items */
+// GoldSparkle uses random positions for sparkles. To avoid React hydration errors,
+// we must ensure random values are only generated on the client, not during SSR.
+// This is why we use useEffect + useState to generate sparkle positions after mount.
+import { useEffect, useState } from "react";
+
+/**
+ * Subtle gold sparkle effect for approved items.
+ *
+ * Hydration-safe: All random sparkle positions are generated only on the client
+ * after mount, never during SSR. This prevents hydration mismatches between
+ * server and client HTML.
+ */
 function GoldSparkle() {
+  const [positions, setPositions] = useState<
+    { ix: string; iy: string; ay: string }[] | null
+  >(null);
+
+  useEffect(() => {
+    // Only generate on client
+    setPositions(
+      Array.from({ length: 6 }, () => ({
+        ix: `${20 + Math.random() * 60}%`,
+        iy: `${20 + Math.random() * 60}%`,
+        ay: `${Math.random() * 40}%`,
+      }))
+    );
+  }, []);
+
+  if (!positions) return null;
+
   return (
     <motion.div
       className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
@@ -156,7 +178,7 @@ function GoldSparkle() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {SPARKLE_POSITIONS.map((pos, i) => (
+      {positions.map((pos, i) => (
         <motion.span
           key={i}
           className="absolute h-1 w-1 rounded-full bg-gold"

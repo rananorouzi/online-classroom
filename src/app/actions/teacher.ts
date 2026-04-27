@@ -36,10 +36,9 @@ async function ensureAttachmentColumn(): Promise<void> {
 
 async function readSessionAttachmentKey(sessionId: string): Promise<string | null> {
   type Row = { attachmentKey: string | null };
-  const rows = await prisma.$queryRawUnsafe<Row[]>(
-    'SELECT "attachmentKey" FROM "sessions" WHERE "id" = ? LIMIT 1',
-    sessionId
-  );
+  const rows = await prisma.$queryRaw<Row[]>`
+    SELECT "attachmentKey" FROM "sessions" WHERE "id" = ${sessionId}
+  `;
   return rows[0]?.attachmentKey ?? null;
 }
 
@@ -47,11 +46,9 @@ async function writeSessionAttachmentKey(
   sessionId: string,
   attachmentValue: string
 ): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    'UPDATE "sessions" SET "attachmentKey" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ?',
-    attachmentValue,
-    sessionId
-  );
+  await prisma.$executeRaw`
+    UPDATE "sessions" SET "attachmentKey" = ${attachmentValue}, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${sessionId}
+  `;
 }
 
 function requireTeacher(session: { user?: { id?: string } } | null) {

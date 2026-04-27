@@ -1,4 +1,4 @@
-import { del, head } from "@vercel/blob";
+import { del, head, put } from "@vercel/blob";
 
 /**
  * Resolve a media key to a downloadable Blob URL.
@@ -7,22 +7,30 @@ export async function getSignedReadUrl(key: string): Promise<string> {
   if (key.startsWith("http://") || key.startsWith("https://")) {
     return key;
   }
-
   const meta = await head(key);
   return meta.url;
 }
 
 /**
- * Direct signed upload URLs are not used in Blob mode.
- * Client upload falls back to /api/upload/local, which proxies to Blob in production.
+ * Generate a signed upload URL for Vercel Blob in production, fallback to proxy in local/dev.
  */
 export async function getSignedUploadUrl(
-  _key: string,
-  _contentType: string
+  key: string,
+  contentType: string
 ): Promise<string> {
-  void _key;
-  void _contentType;
-
+  if (process.env.VERCEL_ENV === "production" && process.env.BLOB_READ_WRITE_TOKEN) {
+    const { url } = await put(
+      key,
+      "",
+      {
+        access: "public",
+        contentType,
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      }
+    );
+    return url;
+  }
+  // Fallback for local/dev: force client to use proxy upload
   const error = new Error(
     "Direct signed uploads are disabled in Blob mode. Use /api/upload/local proxy upload."
   ) as Error & { code?: string };
