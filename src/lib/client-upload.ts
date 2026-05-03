@@ -14,6 +14,13 @@ interface UploadResult {
   key: string;
   fileName: string;
   fileType: string;
+  url?: string;
+}
+
+interface BlobUploadResponse {
+  pathname?: string;
+  url?: string;
+  downloadUrl?: string;
 }
 
 function uploadToSignedUrl(
@@ -57,17 +64,18 @@ function uploadToSignedUrl(
   });
 }
 
-async function uploadToLocalRoute(
-  file: Blob,
-  fileName: string,
-  onProgress?: (percent: number) => void
-): Promise<UploadResult> {
+export async function uploadMediaFile({
+  file,
+  fileName,
+  contentType,
+  folder,
+  onProgress,
+}: UploadOptions): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append("file", file, fileName);
-
+    const endpoint = `/api/media/upload-url?filename=${encodeURIComponent(fileName)}&folder=${encodeURIComponent(folder)}`;
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/upload/local");
+    xhr.open("POST", endpoint);
+    xhr.setRequestHeader("Content-Type", contentType);
 
     let fallbackProgress = 1;
     onProgress?.(fallbackProgress);
@@ -78,7 +86,6 @@ async function uploadToLocalRoute(
           onProgress(Math.round((event.loaded / event.total) * 100));
           return;
         }
-
         fallbackProgress = Math.min(fallbackProgress + 5, 95);
         onProgress(fallbackProgress);
       };
@@ -87,53 +94,20 @@ async function uploadToLocalRoute(
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress?.(100);
-        const data = JSON.parse(xhr.responseText) as {
-          key: string;
-          fileName: string;
-          fileType: string;
-        };
-        resolve(data);
+        try {
+          const data = JSON.parse(xhr.responseText) as BlobUploadResponse;
+          const key = data.pathname ?? data.url ?? "";
+          const resultUrl = data.url ?? data.downloadUrl ?? data.pathname;
+          resolve({ key, fileName, fileType: contentType, url: resultUrl });
+        } catch {
+          resolve({ key: "", fileName, fileType: contentType });
+        }
       } else {
-        reject(new Error("Upload failed"));
+        reject(new Error(`Upload failed with status ${xhr.status}`));
       }
     };
 
     xhr.onerror = () => reject(new Error("Upload failed"));
-    xhr.send(formData);
+    xhr.send(file);
   });
-}
-
-export async function uploadMediaFile({
-  file,
-  fileName,
-  contentType,
-  folder,
-  onProgress,
-}: UploadOptions): Promise<UploadResult> {
-  const response = await fetch("/api/media/upload-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentType, folder, fileName }),
-  });
-
-  if (response.ok) {
-    const data = (await response.json()) as { url: string; key: string };
-    await uploadToSignedUrl(data.url, file, contentType, onProgress);
-    return { key: data.key, fileName, fileType: contentType };
-  }
-
-  type UploadErrorResponse = { error?: string; code?: string };
-  let errorBody: UploadErrorResponse | null = null;
-  try {
-    errorBody = (await response.json()) as UploadErrorResponse;
-  } catch {
-    errorBody = null;
-  }
-
-  const canFallbackToProxyUpload = errorBody?.code === "BLOB_DIRECT_UPLOAD_DISABLED";
-  if (canFallbackToProxyUpload) {
-    return uploadToLocalRoute(file, fileName, onProgress);
-  }
-
-  throw new Error(errorBody?.error || "Failed to get upload URL");
 }

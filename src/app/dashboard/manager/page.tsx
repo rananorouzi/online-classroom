@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import TeacherManager from "./TeacherManager";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 export default async function ManagerPage() {
   const session = await auth();
@@ -62,12 +62,12 @@ export default async function ManagerPage() {
   return (
     <main className="px-6 py-12">
       <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="text-xs text-gold/70 hover:text-gold transition"
-        >
-          ← Back to Dashboard
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Teachers" },
+          ]}
+        />
         <h1 className="mt-3 text-2xl font-bold text-primary">Teacher Management</h1>
         <p className="mt-1 text-sm text-zinc-500">
           Add, edit, archive, and remove teachers. Teachers can be removed only when they have no active students.

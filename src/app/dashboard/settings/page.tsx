@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import SettingsForm from "./SettingsForm";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -17,10 +18,13 @@ export default async function SettingsPage() {
   return (
     <main className="px-6 py-12">
       <div className="mb-8">
-        <p className="text-xs font-medium uppercase tracking-wider text-gold">
-          Settings
-        </p>
-        <h1 className="mt-1 text-2xl font-bold text-primary">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Settings" },
+          ]}
+        />
+        <h1 className="mt-3 text-2xl font-bold text-primary">
           Account Settings
         </h1>
       </div>

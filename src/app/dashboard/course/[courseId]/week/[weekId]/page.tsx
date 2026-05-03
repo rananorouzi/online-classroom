@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getCourseWeeks } from "@/app/actions/sessions";
 import Link from "next/link";
 import SidebarTimeline from "@/components/layout/SidebarTimeline";
+import { prisma } from "@/lib/db";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 interface Props {
   params: Promise<{ courseId: string; weekId: string }>;
@@ -13,7 +15,10 @@ export default async function WeekPage({ params }: Props) {
   if (!session?.user) redirect("/auth/login");
 
   const { courseId, weekId } = await params;
-  const weeks = await getCourseWeeks(courseId);
+  const [weeks, course] = await Promise.all([
+    getCourseWeeks(courseId),
+    prisma.course.findUnique({ where: { id: courseId }, select: { title: true } }),
+  ]);
   const week = weeks.find((w: (typeof weeks)[number]) => w.id === weekId);
 
   if (!week) {
@@ -46,12 +51,13 @@ export default async function WeekPage({ params }: Props) {
       <SidebarTimeline weeks={weeks} currentWeekId={weekId} courseId={courseId} />
       <main className="ml-64 flex-1 p-8">
         <div className="mb-8">
-          <Link
-            href={`/dashboard/course/${courseId}`}
-            className="text-xs text-gold/70 hover:text-gold transition"
-          >
-            ← Back to Course
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: course?.title ?? "Course", href: `/dashboard/course/${courseId}` },
+              { label: week.title },
+            ]}
+          />
           <h1 className="mt-3 text-2xl font-bold text-primary">
             Session {new Date(week.releaseAt).toLocaleDateString("en-GB")}: {week.title}
           </h1>

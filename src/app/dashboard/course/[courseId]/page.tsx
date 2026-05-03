@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getCourseWeeks } from "@/app/actions/sessions";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 interface Props {
   params: Promise<{ courseId: string }>;
@@ -32,20 +33,23 @@ export default async function CoursePage({ params }: Props) {
     }
   }
 
-  const weeks = await getCourseWeeks(courseId);
+  const [weeks, course] = await Promise.all([
+    getCourseWeeks(courseId),
+    prisma.course.findUnique({ where: { id: courseId }, select: { title: true } }),
+  ]);
   const isTeacher = (session.user as { role?: string }).role === "TEACHER";
 
   return (
     <main className="px-6 py-12">
       <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="text-xs text-gold/70 hover:text-gold transition"
-        >
-          ← Back to Dashboard
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: course?.title ?? "Course" },
+          ]}
+        />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-primary">Course sessions</h1>
+          <h1 className="text-2xl font-bold text-primary">{course?.title ?? "Course"}</h1>
 
           {isTeacher && (
             <Link

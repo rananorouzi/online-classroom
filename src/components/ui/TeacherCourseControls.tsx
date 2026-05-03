@@ -373,6 +373,9 @@ function SessionRow({
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [recentUploadUrl, setRecentUploadUrl] = useState<string | null>(null);
+  const [recentAttachmentUrl, setRecentAttachmentUrl] = useState<string | null>(null);
+  const [recentAttachmentIsImage, setRecentAttachmentIsImage] = useState(false);
 
   const handleAddItem = () => {
     if (!itemTitle.trim()) return;
@@ -430,6 +433,8 @@ function SessionRow({
         contentType: file.type,
         folder: `lessons/${session.id}`,
       });
+      // show immediate preview
+      if (data.url) setRecentUploadUrl(data.url);
       await updateSessionVideo(session.id, data.key);
       router.refresh();
       setUploadMsg("Video uploaded successfully.");
@@ -540,6 +545,11 @@ function SessionRow({
               disabled={videoUploading}
             />
           </label>
+          {recentUploadUrl && !videoUploading && (
+            <div className="ml-3">
+              <video src={recentUploadUrl} controls className="h-24 rounded-md" />
+            </div>
+          )}
         </div>
       )}
 
@@ -563,6 +573,8 @@ function SessionRow({
                     contentType: file.type,
                     folder: `lessons/${session.id}`,
                   });
+                  if (data.url) setRecentAttachmentUrl(data.url);
+                  setRecentAttachmentIsImage(file.type.startsWith("image/"));
                   await updateSessionAttachment(session.id, data.key);
                   router.refresh();
                   setUploadMsg("Attachment uploaded successfully.");
@@ -578,6 +590,17 @@ function SessionRow({
               disabled={attachmentUploading}
             />
           </label>
+          {recentAttachmentUrl && !attachmentUploading && (
+            <div className="ml-3">
+              {recentAttachmentIsImage ? (
+                <img src={recentAttachmentUrl} alt="attachment" className="h-12 rounded-md" />
+              ) : (
+                <a href={recentAttachmentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gold underline">
+                  View uploaded file
+                </a>
+              )}
+            </div>
+          )}
         </div>
       )}
 

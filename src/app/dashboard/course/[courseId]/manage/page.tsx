@@ -4,6 +4,7 @@ import { getCourseWeeks } from "@/app/actions/sessions";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import TeacherCourseControls from "@/components/ui/TeacherCourseControls";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 interface Props {
   params: Promise<{ courseId: string }>;
@@ -35,13 +36,14 @@ export default async function ManageCoursePage({ params }: Props) {
     <main className="px-6 py-12">
       {/* Header */}
       <div className="mb-8">
-        <Link
-          href={`/dashboard/course/${courseId}`}
-          className="text-xs text-gold/70 hover:text-gold transition"
-        >
-          ← Back to Course
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold text-primary">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: course.title, href: `/dashboard/course/${courseId}` },
+            { label: "Manage" },
+          ]}
+        />
+        <h1 className="mt-3 text-2xl font-bold text-primary">
           Manage: {course.title}
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
