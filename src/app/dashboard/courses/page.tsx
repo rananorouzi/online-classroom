@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import CourseManager from "./CourseManager";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 export default async function CoursesPage() {
   const session = await auth();
@@ -65,12 +66,12 @@ export default async function CoursesPage() {
   return (
     <main className="px-6 py-12">
       <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="text-xs text-gold/70 hover:text-gold transition"
-        >
-          ← Back to Dashboard
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Courses" },
+          ]}
+        />
         <h1 className="mt-3 text-2xl font-bold text-primary">
           Course Management
         </h1>

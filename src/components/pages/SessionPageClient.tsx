@@ -6,6 +6,7 @@ import Image from "next/image";
 import SidebarTimeline from "@/components/layout/SidebarTimeline";
 import Checklist from "@/components/ui/Checklist";
 import { uploadMediaFile } from "@/lib/client-upload";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 const MemoizedSidebar = memo(SidebarTimeline);
 const MemoizedChecklist = memo(Checklist);
@@ -69,6 +70,7 @@ interface SessionPageClientProps {
   courseId: string;
   currentUserId?: string;
   userRole?: string;
+  courseTitle?: string;
 }
 
 function inferMediaKindFromKey(key: string | null): "video" | "image" | "pdf" | "file" | "none" {
@@ -94,6 +96,7 @@ export default function SessionPageClient({
   courseId,
   currentUserId,
   userRole,
+  courseTitle = "Course",
 }: SessionPageClientProps) {
   const isTeacher = userRole === "TEACHER";
   const lessonMediaKind = inferMediaKindFromKey(session.videoKey);
@@ -137,6 +140,7 @@ export default function SessionPageClient({
       setUploadItemId(null);
     } catch (err) {
       console.error("Submit failed", err);
+      setSubmitNotice("Submission failed. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -164,6 +168,7 @@ export default function SessionPageClient({
       setUploadItemId(null);
     } catch (err) {
       console.error("Submit failed", err);
+      setSubmitNotice("Submission failed. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -181,19 +186,22 @@ export default function SessionPageClient({
       <main className="ml-64 flex-1 p-8">
         {/* Header */}
         <div className="mb-8">
-          <a href="/dashboard" className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-gold mb-2">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Dashboard
-          </a>
-          <p className="text-xs font-medium uppercase tracking-wider text-gold">
-            Session {new Date(session.week.releaseAt).toLocaleDateString("en-GB")} · {session.week.title}
-          </p>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: courseTitle, href: `/dashboard/course/${courseId}` },
+              { label: session.week.title, href: `/dashboard/course/${courseId}/week/${session.week.id}` },
+              { label: session.title },
+            ]}
+          />
           <h2 className="mt-1 text-2xl font-bold text-primary">{session.title}</h2>
           {session.description && <p className="mt-2 text-sm text-zinc-400">{session.description}</p>}
           {submitNotice && (
-            <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+            <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${
+              submitNotice.toLowerCase().includes("failed")
+                ? "border-red-500/20 bg-red-500/10 text-red-300"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+            }`}>
               {submitNotice}
             </div>
           )}

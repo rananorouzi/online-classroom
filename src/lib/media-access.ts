@@ -5,7 +5,9 @@ export function isValidMediaKey(key: string): boolean {
     return false;
   }
 
-  return /^[a-zA-Z0-9/_\-.]+$/.test(key);
+  // Allow percent-encoded sequences and spaces for backwards compatibility
+  // Still restrict to a safe set of characters: letters, numbers, underscore, dash, dot, slash, percent, and space
+  return /^[a-zA-Z0-9 _%/\-.]+$/.test(key);
 }
 
 export async function canAccessMediaKey(

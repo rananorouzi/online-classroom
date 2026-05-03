@@ -1,112 +1,52 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { getSignedUploadUrl } from "@/lib/s3";
-import { randomUUID } from "crypto";
 
-/**
- * Generate a signed upload URL for media files.
- * POST /api/media/upload-url
- * Body: { contentType: string, folder: string, fileName?: string }
- */
-export async function POST(req: NextRequest) {
+import { put } from '@vercel/blob';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+
+const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
+const ALLOWED_CONTENT_TYPE_PREFIXES = ['audio/', 'video/', 'image/', 'application/pdf'];
+
+function sanitizePathSegment(s: string): string {
+  const normalized = s.normalize('NFKD');
+  let out = normalized.replace(/(^\/+|\.\.\/|\\)/g, '');
+  out = out.replace(/[^a-zA-Z0-9._\-\/]/g, '-');
+  out = out.replace(/-+/g, '-');
+  return out.replace(/^\/+|\/+$/g, '');
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const role = (session.user as { role?: string }).role;
-  if (role !== "TEACHER" && role !== "ADMIN" && role !== "STUDENT") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const filename = request.nextUrl.searchParams.get('filename');
+  const folder = request.nextUrl.searchParams.get('folder') ?? '';
+
+  if (!filename) {
+    return NextResponse.json({ error: 'Missing filename' }, { status: 400 });
+  }
+  if (!request.body) {
+    return NextResponse.json({ error: 'Missing request body' }, { status: 400 });
   }
 
-  const { contentType, folder, fileName } = await req.json();
-
-  if (!contentType || typeof contentType !== "string") {
-    return NextResponse.json(
-      { error: "contentType is required" },
-      { status: 400 }
-    );
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!ALLOWED_CONTENT_TYPE_PREFIXES.some((p) => contentType.startsWith(p))) {
+    return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 });
   }
 
-  const allowedPrefixes = [
-    "audio/",
-    "video/",
-    "image/",
-    "application/pdf",
-  ];
-  const isAllowedContentType = allowedPrefixes.some((allowed) =>
-    allowed.endsWith("/")
-      ? contentType.startsWith(allowed)
-      : contentType === allowed
-  );
-  if (!isAllowedContentType) {
-    return NextResponse.json(
-      { error: "Unsupported content type" },
-      { status: 400 }
-    );
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_UPLOAD_SIZE) {
+    return NextResponse.json({ error: 'File too large' }, { status: 400 });
   }
 
-  let requestedFolder =
-    typeof folder === "string" && folder.trim() ? folder.trim() : "feedback";
-  const folderPattern = /^(feedback|lessons|submissions)(?:\/[a-zA-Z0-9_-]+)*$/;
+  const safeFolder = sanitizePathSegment(folder);
+  const safeFilename = sanitizePathSegment(filename);
+  const key = safeFolder ? `${safeFolder.replace(/\/$/, '')}/${safeFilename}` : safeFilename;
 
-  if (!folderPattern.test(requestedFolder)) {
-    return NextResponse.json(
-      {
-        error:
-          "Invalid folder. Only feedback/*, lessons/*, or submissions/* paths are allowed.",
-      },
-      { status: 400 }
-    );
-  }
-
-  if (role === "STUDENT") {
-    if (requestedFolder === "submissions") {
-      requestedFolder = `submissions/${session.user.id}`;
-    }
-
-    const expectedBase = `submissions/${session.user.id}`;
-    if (requestedFolder !== expectedBase && !requestedFolder.startsWith(`${expectedBase}/`)) {
-      return NextResponse.json(
-        { error: "Students can only upload to their own submissions folder." },
-        { status: 403 }
-      );
-    }
-  }
-
-  if (
-    (role === "TEACHER" || role === "ADMIN") &&
-    requestedFolder.startsWith("submissions")
-  ) {
-    return NextResponse.json(
-      { error: "Teachers and admins cannot upload to student submissions folders." },
-      { status: 403 }
-    );
-  }
-
-  const normalizedFileName =
-    typeof fileName === "string" ? fileName.trim().toLowerCase() : "";
-  const rawExt = normalizedFileName.includes(".")
-    ? normalizedFileName.split(".").pop() || ""
-    : "";
-  const safeNameExt = rawExt.replace(/[^a-z0-9]/g, "").slice(0, 10);
-  const contentTypeExt = contentType.split("/")[1]?.split(";")[0] || "bin";
-  const safeTypeExt = contentTypeExt.replace(/[^a-z0-9]/gi, "").slice(0, 10);
-  const ext = safeNameExt || safeTypeExt || "bin";
-
-  const key = `${requestedFolder}/${randomUUID()}.${ext}`;
-
-  try {
-    const url = await getSignedUploadUrl(key, contentType);
-    return NextResponse.json({ url, key });
-  } catch (error) {
-    const errorWithCode = error as Error & { code?: string };
-    return NextResponse.json(
-      {
-        error: "Failed to generate upload URL",
-        code: errorWithCode.code,
-      },
-      { status: 500 }
-    );
-  }
+  const blob = await put(key, request.body, {
+    access: 'public',
+    contentType,
+  });
+  return NextResponse.json(blob);
 }

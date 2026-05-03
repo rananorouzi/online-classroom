@@ -23,6 +23,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // If the stored key is already a full URL, redirect to it directly
+  if (key.startsWith("http://") || key.startsWith("https://")) {
+    return NextResponse.json({ url: key });
+  }
+
   if (!isValidMediaKey(key)) {
     return NextResponse.json({ error: "Invalid key" }, { status: 400 });
   }

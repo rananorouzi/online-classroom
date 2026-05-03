@@ -26,7 +26,8 @@ export default function ResumableUpload({
       if (!file) return;
 
       if (file.size > maxFileSize) {
-        setError("File is too large (max 500MB)");
+        const mb = Math.round(maxFileSize / (1024 * 1024));
+        setError(`File is too large (max ${mb}MB)`);
         return;
       }
 

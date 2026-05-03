@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 
 interface Props {
   params: Promise<{ studentId: string }>;
@@ -60,12 +61,13 @@ export default async function StudentCoursesPage({ params }: Props) {
   return (
     <main className="px-6 py-12">
       <div className="mb-8">
-        <Link
-          href="/dashboard/students"
-          className="text-xs text-gold/70 hover:text-gold transition"
-        >
-          ← Back to Students
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Students", href: "/dashboard/students" },
+            { label: student.name || student.email },
+          ]}
+        />
         <div className="mt-3 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold font-semibold text-sm">
             {(student.name || student.email)[0].toUpperCase()}
