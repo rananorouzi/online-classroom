@@ -375,6 +375,7 @@ function SessionRow({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [recentUploadUrl, setRecentUploadUrl] = useState<string | null>(null);
   const [recentAttachmentUrl, setRecentAttachmentUrl] = useState<string | null>(null);
+  const [recentAttachmentIsImage, setRecentAttachmentIsImage] = useState(false);
 
   const handleAddItem = () => {
     if (!itemTitle.trim()) return;
@@ -573,6 +574,7 @@ function SessionRow({
                     folder: `lessons/${session.id}`,
                   });
                   if (data.url) setRecentAttachmentUrl(data.url);
+                  setRecentAttachmentIsImage(file.type.startsWith("image/"));
                   await updateSessionAttachment(session.id, data.key);
                   router.refresh();
                   setUploadMsg("Attachment uploaded successfully.");
@@ -590,7 +592,7 @@ function SessionRow({
           </label>
           {recentAttachmentUrl && !attachmentUploading && (
             <div className="ml-3">
-              {file?.type?.startsWith?.("image") ? (
+              {recentAttachmentIsImage ? (
                 <img src={recentAttachmentUrl} alt="attachment" className="h-12 rounded-md" />
               ) : (
                 <a href={recentAttachmentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gold underline">
