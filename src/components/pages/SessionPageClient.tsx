@@ -183,7 +183,7 @@ export default function SessionPageClient({
         courseId={courseId}
       />
 
-      <main className="ml-64 flex-1 p-8">
+      <main className="flex-1 p-4 pt-[3.75rem] lg:ml-64 lg:p-8 lg:pt-8">
         {/* Header */}
         <div className="mb-8">
           <Breadcrumb
@@ -215,6 +215,13 @@ export default function SessionPageClient({
               <HlsPlayer sessionId={session.id} videoKey={session.videoKey} onTimeUpdate={handleTimeUpdate} seekRef={seekRef} />
             </section>
 
+            {/* Timestamp Comments — always immediately after the video */}
+            {lessonMediaKind === "video" && (
+              <section>
+                <TimestampComments sessionId={session.id} currentTime={videoTime} duration={videoDuration} onSeek={handleSeek} currentUserId={currentUserId} />
+              </section>
+            )}
+
             {lessonAttachmentKeys.length > 0 && (
               <section>
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">
@@ -225,13 +232,6 @@ export default function SessionPageClient({
                     <LessonAttachment key={`${key}-${idx}`} attachmentKey={key} />
                   ))}
                 </div>
-              </section>
-            )}
-
-            {/* Timestamp Comments */}
-            {lessonMediaKind === "video" && (
-              <section>
-                <TimestampComments sessionId={session.id} currentTime={videoTime} duration={videoDuration} onSeek={handleSeek} currentUserId={currentUserId} />
               </section>
             )}
 
