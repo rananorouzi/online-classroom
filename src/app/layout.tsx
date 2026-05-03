@@ -19,14 +19,9 @@ export const metadata: Metadata = {
   title: "Music Academy Pro",
   description: "High-end LMS for music students with studio-quality tools",
   manifest: "/manifest.json",
+  // favicon.ico + icon.svg in src/app/ are picked up automatically by Next.js App Router.
+  // Apple touch icons must still be declared explicitly.
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.png", sizes: "48x48", type: "image/png" },
-      { url: "/favicon.ico", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    shortcut: "/favicon.ico",
     apple: [
       { url: "/icons/icon-152.png", sizes: "152x152", type: "image/png" },
       { url: "/icons/icon-167.png", sizes: "167x167", type: "image/png" },

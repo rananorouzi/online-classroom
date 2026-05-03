@@ -99,14 +99,8 @@ for (const { name, size, maskable } of sizes) {
 await sharp(Buffer.from(makeSvg(48))).png().toFile(join(__dirname, '../public/favicon.png'));
 console.log('✓ favicon.png');
 
-// favicon.svg — vector, looks perfect at any DPI in modern browsers
-const svgFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#0A0A0A"/>
-  <circle cx="50" cy="50" r="38" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.35"/>
-  <ellipse cx="44" cy="63" rx="9" ry="6.5" transform="rotate(-20,44,63)" fill="#D4AF37"/>
-  <rect x="52.2" y="28" width="3.2" height="36" rx="1.6" fill="#D4AF37"/>
-  <path d="M55.4 28 Q72 35 65 52" stroke="#D4AF37" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-</svg>`;
+// favicon.svg — same design as the PNG icons, but as a scalable vector (no fixed width/height)
+const svgFavicon = makeSvg(100).replace(/width="\d+" height="\d+" /, '');
 writeFileSync(join(__dirname, '../public/favicon.svg'), svgFavicon.trim());
 console.log('✓ favicon.svg');
 
