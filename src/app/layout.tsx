@@ -56,6 +56,8 @@ export default function RootLayout({
         {/* PWA splash overlay — shown immediately before any CSS loads, removed on mount */}
         <div
           id="app-splash"
+          aria-hidden="true"
+          role="presentation"
           style={{
             position: "fixed",
             inset: 0,

@@ -2,7 +2,9 @@
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
+import { mkdir, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import path from 'path';
 
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
@@ -93,12 +95,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (isLocalDev) {
     try {
-      const uploadsDir = path.join(process.cwd(), 'public', key.substring(0, key.lastIndexOf('/')));
-      await mkdir(uploadsDir, { recursive: true });
-      const buffer = Buffer.from(await request.arrayBuffer());
-      await writeFile(path.join(process.cwd(), 'public', key), buffer);
+      const keyDir = path.dirname(key);
+      const uploadsDir = path.join(process.cwd(), 'public', keyDir === '.' ? '' : keyDir);
+      await new Promise<void>((res, rej) =>
+        mkdir(uploadsDir, { recursive: true }, (err) => (err ? rej(err) : res()))
+      );
+      const destPath = path.join(process.cwd(), 'public', key);
+      const writeStream = createWriteStream(destPath);
+      if (!request.body) throw new Error('Missing body');
+      let bytesWritten = 0;
+      const nodeStream = Readable.fromWeb(request.body as import('stream/web').ReadableStream<Uint8Array>);
+      nodeStream.on('data', (chunk: Buffer) => {
+        bytesWritten += chunk.length;
+        if (bytesWritten > MAX_UPLOAD_SIZE) {
+          nodeStream.destroy(new Error('File too large'));
+        }
+      });
+      await pipeline(nodeStream, writeStream);
       return NextResponse.json({ pathname: key });
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (msg === 'File too large') {
+        return NextResponse.json({ error: 'File is too large (max 500MB)' }, { status: 413 });
+      }
       console.error('[upload-url] Local write failed:', err);
       return NextResponse.json({ error: 'Local upload failed' }, { status: 500 });
     }

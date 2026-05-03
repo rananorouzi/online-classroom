@@ -393,20 +393,38 @@ function useSignedUrl(key: string | null) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Reset state whenever key changes
+    setUrl(null);
+    setError(null);
+    setLoading(false);
+
     if (!key) return;
+
     if (key.startsWith("uploads/")) {
       setUrl(`/${key}`);
       return;
     }
+
+    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/media/signed-url?key=${encodeURIComponent(key)}`)
+    fetch(`/api/media/signed-url?key=${encodeURIComponent(key)}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.url) setUrl(data.url);
         else setError(data.error || "Failed to load file");
       })
-      .catch(() => setError("Failed to load file — media service unavailable"))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+        setError("Failed to load file — media service unavailable");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [key]);
 
   return { url, error, loading };
