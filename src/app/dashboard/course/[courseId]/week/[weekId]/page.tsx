@@ -33,7 +33,7 @@ export default async function WeekPage({ params }: Props) {
     return (
       <div className="flex min-h-screen bg-background">
         <SidebarTimeline weeks={weeks} currentWeekId={weekId} courseId={courseId} />
-        <main className="ml-64 flex-1 p-8">
+        <main className="flex-1 p-4 pt-[3.75rem] lg:ml-64 lg:p-8 lg:pt-8">
           <div className="flex h-64 flex-col items-center justify-center gap-2 text-zinc-500">
             <span className="text-4xl">🔒</span>
             <p className="text-sm">This week is not yet available</p>
@@ -49,7 +49,7 @@ export default async function WeekPage({ params }: Props) {
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarTimeline weeks={weeks} currentWeekId={weekId} courseId={courseId} />
-      <main className="ml-64 flex-1 p-8">
+      <main className="flex-1 p-4 pt-[3.75rem] lg:ml-64 lg:p-8 lg:pt-8">
         <div className="mb-8">
           <Breadcrumb
             items={[

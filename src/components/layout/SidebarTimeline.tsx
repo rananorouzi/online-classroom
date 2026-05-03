@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -39,6 +39,30 @@ export default function SidebarTimeline({
   const isManager = (authSession?.user as { role?: string } | undefined)?.role === "ADMIN";
   const { logout, isLogoutPending } = useLogout();
 
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const hamburgerButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close on Escape and move focus back to hamburger
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsMobileOpen(false);
+        hamburgerButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isMobileOpen]);
+
+  // Move focus into the drawer when it opens
+  useEffect(() => {
+    if (isMobileOpen) {
+      closeButtonRef.current?.focus();
+    }
+  }, [isMobileOpen]);
+
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(() => {
     // Auto-expand the week containing the current session or the current week
     const initial: Record<string, boolean> = {};
@@ -55,11 +79,62 @@ export default function SidebarTimeline({
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-zinc-800 bg-zinc-950 p-6">
+    <>
+      {/* Mobile top header bar — hidden on desktop where the sidebar shows the name */}
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 px-4 backdrop-blur-sm lg:hidden">
+        <button
+          ref={hamburgerButtonRef}
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded={isMobileOpen}
+          aria-controls="mobile-sidebar"
+          onClick={() => setIsMobileOpen(true)}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-300 transition hover:bg-zinc-800"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span className="flex-1 text-center text-sm font-semibold tracking-wide text-gold">
+          Music Academy Pro
+        </span>
+        {/* Right spacer balances the hamburger so the name stays centred */}
+        <span className="h-9 w-9 shrink-0" aria-hidden="true" />
+      </header>
+
+      {/* Backdrop overlay on mobile */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        id="mobile-sidebar"
+        className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-800 bg-zinc-950 p-6 transition-transform duration-300 ease-in-out lg:w-64 lg:translate-x-0 lg:z-40 ${
+          isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
       {/* Logo */}
-      <div className="mb-8">
-        <h1 className="text-lg font-bold text-gold">Music Academy Pro</h1>
-        <p className="text-xs text-zinc-500">Studio Dashboard</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gold">Music Academy Pro</h1>
+          <p className="text-xs text-zinc-500">Studio Dashboard</p>
+        </div>
+        {/* Close button — mobile only */}
+        <button
+          ref={closeButtonRef}
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => { setIsMobileOpen(false); hamburgerButtonRef.current?.focus(); }}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Timeline */}
@@ -166,6 +241,7 @@ export default function SidebarTimeline({
                               <li key={s.id}>
                                 <Link
                                   href={`/dashboard/course/${courseId}/week/${week.id}/session/${s.id}`}
+                                  onClick={() => setIsMobileOpen(false)}
                                   className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition ${
                                     isActiveSession
                                       ? "bg-gold/10 text-gold font-medium"
@@ -218,5 +294,6 @@ export default function SidebarTimeline({
         </div>
       </div>
     </aside>
+    </>
   );
 }
