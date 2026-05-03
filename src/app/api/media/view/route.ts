@@ -29,6 +29,20 @@ export async function GET(request: NextRequest) {
   try {
     signedUrl = await getSignedReadUrl(pathname);
   } catch {
+    // Local dev: serve file directly from public/ if it exists
+    const isLocalDev = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
+    if (isLocalDev) {
+      const { existsSync } = await import('fs');
+      const path = await import('path');
+      const localPath = path.join(process.cwd(), 'public', pathname);
+      if (existsSync(localPath)) {
+        const { readFile } = await import('fs/promises');
+        const buf = await readFile(localPath);
+        const ext = pathname.split('.').pop()?.toLowerCase() ?? '';
+        const mime: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', ogg: 'audio/ogg', pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
+        return new NextResponse(buf, { headers: { 'Content-Type': mime[ext] ?? 'application/octet-stream', 'X-Content-Type-Options': 'nosniff' } });
+      }
+    }
     return new NextResponse('Not found', { status: 404 });
   }
 

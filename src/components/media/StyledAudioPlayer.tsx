@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 interface StyledAudioPlayerProps {
   src: string;
@@ -14,6 +14,9 @@ export default function StyledAudioPlayer({ src, compact }: StyledAudioPlayerPro
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [loadError, setLoadError] = useState(false);
+
+  // Reset error state whenever src changes
+  useEffect(() => { setLoadError(false); }, [src]);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current;

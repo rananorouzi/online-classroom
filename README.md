@@ -2,11 +2,10 @@
 
 > A production-grade, mobile-first Learning Management System built for music education — with studio-quality video/audio tools, drip-content scheduling, assignment workflows, and teacher feedback powered by waveform audio.
 
-![Music Academy Pro](public/icons/icon-512.png)
-
 ---
 
 ## Table of Contents
+
 
 1. [Features Overview](#features-overview)
 2. [User Roles](#user-roles)
