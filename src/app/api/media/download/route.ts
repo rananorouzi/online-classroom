@@ -39,11 +39,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid key" }, { status: 400 });
   }
 
-  // If the key is already a full URL, redirect directly
-  if (key.startsWith("http://") || key.startsWith("https://")) {
-    return NextResponse.redirect(key);
-  }
-
   const role = (session.user as { role?: string }).role;
   // Resolve a signed URL and redirect the browser there so media can be displayed
   if (!isValidMediaKey(key)) {
