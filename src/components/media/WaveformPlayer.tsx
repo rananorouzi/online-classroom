@@ -94,8 +94,14 @@ export default function WaveformPlayer({
 
   if (error) {
     return (
-      <div className="flex h-16 items-center justify-center rounded-lg bg-zinc-900 text-xs text-zinc-500">
-        {error}
+      <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+        <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <div>
+          <p className="text-xs font-medium text-red-300">Unable to load audio</p>
+          <p className="mt-0.5 text-[11px] text-red-400/80">{error}</p>
+        </div>
       </div>
     );
   }

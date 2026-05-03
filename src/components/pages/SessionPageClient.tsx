@@ -373,26 +373,68 @@ function SubmissionsList({ submissions }: {
   );
 }
 
+function MediaErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+      <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-5 w-5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+      <div>
+        <p className="text-sm font-medium text-red-300">Unable to load file</p>
+        <p className="mt-0.5 text-xs text-red-400/80">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function useSignedUrl(key: string | null) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!key) return;
+    if (key.startsWith("uploads/")) {
+      setUrl(`/${key}`);
+      return;
+    }
+    setLoading(true);
+    fetch(`/api/media/signed-url?key=${encodeURIComponent(key)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.url) setUrl(data.url);
+        else setError(data.error || "Failed to load file");
+      })
+      .catch(() => setError("Failed to load file — media service unavailable"))
+      .finally(() => setLoading(false));
+  }, [key]);
+
+  return { url, error, loading };
+}
+
 function LessonAttachment({ attachmentKey }: { attachmentKey: string }) {
   const lower = attachmentKey.toLowerCase();
   const isPdf = lower.endsWith(".pdf");
   const isImage = lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".avif") || lower.endsWith(".svg");
-  const src = attachmentKey.startsWith("uploads/") ? `/${attachmentKey}` : `/api/media/download?key=${encodeURIComponent(attachmentKey)}`;
+  const downloadHref = attachmentKey.startsWith("uploads/") ? `/${attachmentKey}` : `/api/media/download?key=${encodeURIComponent(attachmentKey)}`;
+  const { url: viewUrl, error: viewError, loading: viewLoading } = useSignedUrl(isPdf || isImage ? attachmentKey : null);
   const [showPreview, setShowPreview] = useState(true);
 
   if (!isPdf && !isImage) {
     return (
       <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
         <p className="text-xs text-zinc-500">Attachment</p>
-        <a href={src} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-gold hover:underline">
+        <a href={downloadHref} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-gold hover:underline">
           Open in new tab
         </a>
-        <a href={src} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
+        <a href={downloadHref} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
           Download
         </a>
       </div>
     );
   }
+
+  if (viewError) return <MediaErrorBanner message={viewError} />;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
@@ -409,21 +451,25 @@ function LessonAttachment({ attachmentKey }: { attachmentKey: string }) {
       </div>
 
       <div className="mt-2">
-        <a href={src} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-gold hover:underline">
+        <a href={downloadHref} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-gold hover:underline">
           Open in new tab
         </a>
-        <a href={src} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
+        <a href={downloadHref} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
           Download
         </a>
       </div>
 
-      {showPreview && (
+      {viewLoading && (
+        <div className="mt-3 h-24 animate-pulse rounded-lg bg-zinc-900" />
+      )}
+
+      {!viewLoading && viewUrl && showPreview && (
         <div className="mt-3 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
           {isPdf ? (
-            <iframe src={src} title="Lesson attachment PDF preview" className="h-96 w-full" />
+            <iframe src={viewUrl} title="Lesson attachment PDF preview" className="h-96 w-full" />
           ) : (
             <Image
-              src={src}
+              src={viewUrl}
               alt="Lesson attachment preview"
               width={1600}
               height={1000}
@@ -439,15 +485,19 @@ function LessonAttachment({ attachmentKey }: { attachmentKey: string }) {
 
 function SubmissionMedia({ fileKey, fileType, fileName }: { fileKey: string | null; fileType: string | null; fileName: string | null }) {
   const [showPreview, setShowPreview] = useState(true);
+  const { url, error, loading } = useSignedUrl(fileKey);
   if (!fileKey) return null;
-  const src = fileKey.startsWith("uploads/") ? `/${fileKey}` : `/api/media/download?key=${encodeURIComponent(fileKey)}`;
+  const downloadHref = fileKey.startsWith("uploads/") ? `/${fileKey}` : `/api/media/download?key=${encodeURIComponent(fileKey)}`;
   const isPdf = fileType === "application/pdf";
   const isImage = !!fileType?.startsWith("image/");
 
+  if (error) return <MediaErrorBanner message={error} />;
+  if (loading || !url) return <div className="h-12 animate-pulse rounded-lg bg-zinc-900" />;
+
   if (fileType?.startsWith("video/"))
-    return <video src={src} controls className="w-full rounded-lg" style={{ maxHeight: 300 }} />;
+    return <video src={url} controls className="w-full rounded-lg" style={{ maxHeight: 300 }} />;
   if (fileType?.startsWith("audio/"))
-    return <StyledAudioPlayer src={src} />;
+    return <StyledAudioPlayer src={url} />;
   if (isImage || isPdf)
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
@@ -461,20 +511,20 @@ function SubmissionMedia({ fileKey, fileType, fileName }: { fileKey: string | nu
           </button>
         </div>
         <div className="mt-1">
-          <a href={src} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-gold hover:underline">
+          <a href={downloadHref} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-gold hover:underline">
             Open in new tab
           </a>
-          <a href={src} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
+          <a href={downloadHref} download className="ml-3 inline-block text-sm text-zinc-300 hover:text-zinc-100">
             Download
           </a>
         </div>
         {showPreview && (
           <div className="mt-3 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
             {isPdf ? (
-              <iframe src={src} title={fileName || "Submitted PDF preview"} className="h-80 w-full" />
+              <iframe src={url} title={fileName || "Submitted PDF preview"} className="h-80 w-full" />
             ) : (
               <Image
-                src={src}
+                src={url}
                 alt={fileName || "Submitted image preview"}
                 width={1400}
                 height={900}
@@ -487,7 +537,7 @@ function SubmissionMedia({ fileKey, fileType, fileName }: { fileKey: string | nu
       </div>
     );
   return (
-    <a href={src} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:underline">
+    <a href={downloadHref} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:underline">
       Download {fileName}
     </a>
   );

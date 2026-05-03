@@ -45,3 +45,6 @@ next-env.d.ts
 # local data/runtime artifacts
 *.db
 /public/uploads/
+/public/submissions/
+/public/lessons/
+/public/feedback/

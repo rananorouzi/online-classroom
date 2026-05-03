@@ -2,6 +2,8 @@
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
 const ALLOWED_CONTENT_TYPE_PREFIXES = ['audio/', 'video/', 'image/', 'application/pdf'];
@@ -83,6 +85,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
   }
   const key = safeFolder ? `${safeFolder.replace(/\/$/, '')}/${safeFilename}` : safeFilename;
+
+  // Local dev fallback — when no Blob token is configured, store files on disk
+  const isLocalDev = !process.env.BLOB_READ_WRITE_TOKEN &&
+    process.env.NODE_ENV !== 'production' &&
+    !process.env.VERCEL;
+
+  if (isLocalDev) {
+    try {
+      const uploadsDir = path.join(process.cwd(), 'public', key.substring(0, key.lastIndexOf('/')));
+      await mkdir(uploadsDir, { recursive: true });
+      const buffer = Buffer.from(await request.arrayBuffer());
+      await writeFile(path.join(process.cwd(), 'public', key), buffer);
+      return NextResponse.json({ pathname: key });
+    } catch (err) {
+      console.error('[upload-url] Local write failed:', err);
+      return NextResponse.json({ error: 'Local upload failed' }, { status: 500 });
+    }
+  }
 
   try {
     const blob = await put(key, request.body, {

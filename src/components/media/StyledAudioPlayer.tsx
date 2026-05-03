@@ -13,6 +13,7 @@ export default function StyledAudioPlayer({ src, compact }: StyledAudioPlayerPro
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current;
@@ -41,6 +42,20 @@ export default function StyledAudioPlayer({ src, compact }: StyledAudioPlayerPro
   const btnSize = compact ? "h-8 w-8" : "h-10 w-10";
   const iconSize = compact ? "h-3 w-3" : "h-4 w-4";
   const barHeight = compact ? "h-1.5" : "h-2";
+
+  if (loadError) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+        <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <div>
+          <p className="text-xs font-medium text-red-300">Unable to load audio</p>
+          <p className="mt-0.5 text-[11px] text-red-400/80">The audio file could not be played. It may be unavailable or the storage service is not configured.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3 w-full">
@@ -72,6 +87,7 @@ export default function StyledAudioPlayer({ src, compact }: StyledAudioPlayerPro
           setProgress(0);
           setCurrentTime(0);
         }}
+        onError={() => setLoadError(true)}
         className="hidden"
       />
 
