@@ -95,8 +95,59 @@ for (const { name, size, maskable } of sizes) {
   console.log(`✓ ${name}`);
 }
 
-// Also write favicon.png (32px, rounded)
-await sharp(Buffer.from(makeSvg(32))).png().toFile(join(__dirname, '../public/favicon.png'));
+// favicon.png — 48px (used by layout.tsx for PNG browsers)
+await sharp(Buffer.from(makeSvg(48))).png().toFile(join(__dirname, '../public/favicon.png'));
 console.log('✓ favicon.png');
+
+// favicon.svg — vector, looks perfect at any DPI in modern browsers
+const svgFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#0A0A0A"/>
+  <circle cx="50" cy="50" r="38" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.35"/>
+  <ellipse cx="44" cy="63" rx="9" ry="6.5" transform="rotate(-20,44,63)" fill="#D4AF37"/>
+  <rect x="52.2" y="28" width="3.2" height="36" rx="1.6" fill="#D4AF37"/>
+  <path d="M55.4 28 Q72 35 65 52" stroke="#D4AF37" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+</svg>`;
+writeFileSync(join(__dirname, '../public/favicon.svg'), svgFavicon.trim());
+console.log('✓ favicon.svg');
+
+// favicon.ico — multi-resolution (16, 32, 48) for legacy browsers / Windows
+// Build ICO binary manually: ICO header + directory + PNG payloads
+const icoSizes = [16, 32, 48];
+const pngBuffers = await Promise.all(
+  icoSizes.map((s) => sharp(Buffer.from(makeSvg(s))).png().toBuffer())
+);
+
+function buildIco(pngBuffers) {
+  const HEADER_SIZE = 6;
+  const DIR_ENTRY_SIZE = 16;
+  const dirSize = DIR_ENTRY_SIZE * pngBuffers.length;
+  let dataOffset = HEADER_SIZE + dirSize;
+
+  const header = Buffer.alloc(HEADER_SIZE);
+  header.writeUInt16LE(0, 0);              // reserved
+  header.writeUInt16LE(1, 2);              // type: 1 = ICO
+  header.writeUInt16LE(pngBuffers.length, 4);
+
+  const dirEntries = pngBuffers.map((png, i) => {
+    const size = icoSizes[i];
+    const entry = Buffer.alloc(DIR_ENTRY_SIZE);
+    entry.writeUInt8(size >= 256 ? 0 : size, 0);  // width (0 = 256)
+    entry.writeUInt8(size >= 256 ? 0 : size, 1);  // height
+    entry.writeUInt8(0, 2);                         // colour count
+    entry.writeUInt8(0, 3);                         // reserved
+    entry.writeUInt16LE(1, 4);                      // colour planes
+    entry.writeUInt16LE(32, 6);                     // bits per pixel
+    entry.writeUInt32LE(png.length, 8);             // image data size
+    entry.writeUInt32LE(dataOffset, 12);            // image data offset
+    dataOffset += png.length;
+    return entry;
+  });
+
+  return Buffer.concat([header, ...dirEntries, ...pngBuffers]);
+}
+
+const icoBuffer = buildIco(pngBuffers);
+writeFileSync(join(__dirname, '../public/favicon.ico'), icoBuffer);
+console.log('✓ favicon.ico  (16×16, 32×32, 48×48)');
 
 console.log('\nAll icons generated successfully.');
