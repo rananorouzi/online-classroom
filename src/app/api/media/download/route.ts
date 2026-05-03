@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canAccessMediaKey, isValidMediaKey } from "@/lib/media-access";
 import { getSignedReadUrl } from "@/lib/s3";
+import { existsSync } from "fs";
+import path from "path";
 
 async function buildDownloadResponse(sessionUserId: string, role: string | undefined, key: string) {
   if (!isValidMediaKey(key)) {
@@ -54,20 +56,12 @@ export async function GET(req: NextRequest) {
     const url = await getSignedReadUrl(key);
     return NextResponse.redirect(url);
   } catch {
-    // Fallback for local dev files stored in public/uploads
     const isDevLocalFallback = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
-    if (isDevLocalFallback && key.startsWith("uploads/")) {
-      const origin = req.nextUrl.origin;
-      return NextResponse.redirect(`${origin}/${key}`);
-    }
     if (isDevLocalFallback) {
       const origin = req.nextUrl.origin;
-      const isVideo = key.endsWith(".m3u8") || key.endsWith(".mp4") || key.endsWith(".webm") || key.endsWith(".mov") || key.endsWith(".m4v");
-      const isAudio = key.endsWith(".webm") || key.endsWith(".opus") || key.endsWith(".ogg");
-      if (isVideo || isAudio) {
-        return NextResponse.redirect(`${origin}/sample-media/sample.mp4`);
-      }
-      if (key.startsWith("uploads/")) {
+      // If the file was written locally under public/<key>, serve it directly
+      const localPath = path.join(process.cwd(), "public", key);
+      if (existsSync(localPath)) {
         return NextResponse.redirect(`${origin}/${key}`);
       }
     }

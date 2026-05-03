@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canAccessMediaKey, isValidMediaKey } from "@/lib/media-access";
 import { getSignedReadUrl } from "@/lib/s3";
+import { existsSync } from "fs";
+import path from "path";
 
 /**
  * Media proxy: resolves secure URLs for HLS playlists, chunks, and audio.
@@ -54,10 +56,19 @@ export async function GET(req: NextRequest) {
     }
 
     const origin = req.nextUrl.origin;
+
+    // If the file was uploaded locally it lives under public/<key>
+    const localPath = path.join(process.cwd(), "public", key);
+    if (existsSync(localPath)) {
+      return NextResponse.json({ url: `${origin}/${key}`, local: true });
+    }
+
+    // Legacy uploads/ prefix
     if (key.startsWith("uploads/")) {
       return NextResponse.json({ url: `${origin}/${key}`, local: true });
     }
 
+    // Fallback to sample media so the player doesn't hard-error during dev
     const isVideo = key.endsWith(".m3u8") || key.endsWith(".mp4");
     const isAudio =
       key.endsWith(".webm") || key.endsWith(".opus") || key.endsWith(".ogg");

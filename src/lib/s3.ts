@@ -6,6 +6,9 @@ import { del, head, put } from "@vercel/blob";
  * Get a signed read URL for a private blob.
  */
 export async function getSignedReadUrl(key: string): Promise<string> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error("BLOB_READ_WRITE_TOKEN is not set");
+  }
   const meta = await head(key);
   if (!meta || !meta.url) throw new Error("Blob not found");
   return meta.url;
