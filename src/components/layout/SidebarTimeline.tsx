@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -40,6 +40,28 @@ export default function SidebarTimeline({
   const { logout, isLogoutPending } = useLogout();
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const hamburgerButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close on Escape and move focus back to hamburger
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsMobileOpen(false);
+        hamburgerButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isMobileOpen]);
+
+  // Move focus into the drawer when it opens
+  useEffect(() => {
+    if (isMobileOpen) {
+      closeButtonRef.current?.focus();
+    }
+  }, [isMobileOpen]);
 
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(() => {
     // Auto-expand the week containing the current session or the current week
@@ -61,8 +83,11 @@ export default function SidebarTimeline({
       {/* Mobile top header bar — hidden on desktop where the sidebar shows the name */}
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 px-4 backdrop-blur-sm lg:hidden">
         <button
+          ref={hamburgerButtonRef}
           type="button"
           aria-label="Open navigation"
+          aria-expanded={isMobileOpen}
+          aria-controls="mobile-sidebar"
           onClick={() => setIsMobileOpen(true)}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-300 transition hover:bg-zinc-800"
         >
@@ -87,6 +112,7 @@ export default function SidebarTimeline({
       )}
 
       <aside
+        id="mobile-sidebar"
         className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-800 bg-zinc-950 p-6 transition-transform duration-300 ease-in-out lg:w-64 lg:translate-x-0 lg:z-40 ${
           isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
@@ -99,9 +125,10 @@ export default function SidebarTimeline({
         </div>
         {/* Close button — mobile only */}
         <button
+          ref={closeButtonRef}
           type="button"
           aria-label="Close navigation"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={() => { setIsMobileOpen(false); hamburgerButtonRef.current?.focus(); }}
           className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,14 +1,21 @@
 /**
  * Generates all required PWA / mobile app icons from an inline SVG.
  * Run once: node scripts/gen-icons.mjs
+ *
+ * Requires sharp (devDependency): npm install --save-dev sharp
  */
 import sharp from 'sharp';
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, '../public/icons');
+const APP_DIR = join(__dirname, '../src/app');
+
+// Ensure output directories exist before writing
+mkdirSync(OUT, { recursive: true });
+mkdirSync(APP_DIR, { recursive: true });
 
 /**
  * SVG icon: gold music note on dark background.
@@ -95,14 +102,14 @@ for (const { name, size, maskable } of sizes) {
   console.log(`✓ ${name}`);
 }
 
-// favicon.png — 48px (used by layout.tsx for PNG browsers)
-await sharp(Buffer.from(makeSvg(48))).png().toFile(join(__dirname, '../public/favicon.png'));
-console.log('✓ favicon.png');
+// favicon.ico + icon.svg — written to src/app/ so Next.js App Router serves them
+// automatically as <link rel="icon">. This is the single canonical location;
+// no copies are needed in public/.
 
-// favicon.svg — same design as the PNG icons, but as a scalable vector (no fixed width/height)
+// favicon.svg — same design as PNGs, scalable vector (no fixed width/height)
 const svgFavicon = makeSvg(100).replace(/width="\d+" height="\d+" /, '');
-writeFileSync(join(__dirname, '../public/favicon.svg'), svgFavicon.trim());
-console.log('✓ favicon.svg');
+writeFileSync(join(APP_DIR, 'icon.svg'), svgFavicon.trim());
+console.log('✓ src/app/icon.svg');
 
 // favicon.ico — multi-resolution (16, 32, 48) for legacy browsers / Windows
 // Build ICO binary manually: ICO header + directory + PNG payloads
@@ -141,7 +148,7 @@ function buildIco(pngBuffers) {
 }
 
 const icoBuffer = buildIco(pngBuffers);
-writeFileSync(join(__dirname, '../public/favicon.ico'), icoBuffer);
-console.log('✓ favicon.ico  (16×16, 32×32, 48×48)');
+writeFileSync(join(APP_DIR, 'favicon.ico'), icoBuffer);
+console.log('✓ src/app/favicon.ico  (16×16, 32×32, 48×48)');
 
 console.log('\nAll icons generated successfully.');
