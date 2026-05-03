@@ -6,6 +6,7 @@
 
 ## Table of Contents
 
+
 1. [Features Overview](#features-overview)
 2. [User Roles](#user-roles)
 3. [Tech Stack](#tech-stack)
