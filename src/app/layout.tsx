@@ -83,7 +83,7 @@ export default function RootLayout({
             Music Academy Pro
           </p>
         </div>
-        <SplashRemover />
+        <ServiceWorkerRegistrar />
         {children}
       </body>
     </html>
