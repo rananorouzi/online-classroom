@@ -84,7 +84,6 @@ export default function RootLayout({
           </p>
         </div>
         <SplashRemover />
-        <ServiceWorkerRegistrar />
         {children}
       </body>
     </html>
